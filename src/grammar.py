@@ -5,6 +5,7 @@ class Grammar():
         self.all_rules = {}
         self.terminal_rules = list()
         self.non_terminal_rules = list()
+        self._starting_rule = ""
     
     def rule(self, rule_str:str)->Rule:
         return self.all_rules[rule_str]
@@ -22,6 +23,14 @@ class Grammar():
         
         #this overrides previous definition
         self.all_rules[rule.name] = rule
+    
+    @property
+    def starting_rule(self) -> Rule:
+        return self.all_rules[self._starting_rule]
+    
+    @starting_rule.setter
+    def starting_rule(self, new_starting_rule:str):
+        self._starting_rule = new_starting_rule
     
     def __str__(self):
         grammar_str = ""
@@ -58,6 +67,13 @@ class Rule():
     def name(self, new_name:str):
         raise AttributeError("Name is not subscriptable")
     
+    def __eq__(self, __value: object) -> bool:
+        
+        if not isinstance(__value, Rule):
+            return False
+        
+        return self.expansions == __value.expansions
+
     def __str__(self):
         rule_str = self._name+": "
         for expansion in self._expansions:

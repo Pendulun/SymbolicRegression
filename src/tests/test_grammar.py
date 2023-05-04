@@ -32,6 +32,12 @@ class TestGrammar(TestCase):
         
         expected_grammar_str = "expr: term binop term | unop term\nterm: var | const\nvar: X1 | X2 | X3\nconst: 1 | 2 | 3 | 4"
         self.assertEqual(str(grammar), expected_grammar_str)
+    
+    def test_can_set_starting_rule(self):
+        grammar = self.get_grammar()
+        grammar.starting_rule = 'expr'
+        expected_rule = Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term'))])
+        self.assertEqual(grammar.starting_rule, expected_rule)
 
 
 if __name__ == "__main__":
