@@ -11,6 +11,9 @@ class Grammar():
     def rule(self, rule_str:str)->Rule:
         return self.all_rules[rule_str]
     
+    def is_rule(self, rule_str:str) -> bool:
+        return rule_str in self.all_rules.keys()
+    
     def add_terminal_rule(self, rule:Rule):
         if rule.name not in self.terminal_rules:
             self.terminal_rules.append(rule.name)
@@ -25,6 +28,38 @@ class Grammar():
         #this overrides previous definition
         self.all_rules[rule.name] = rule
     
+    def _expand_idxs_helper(self, rule:Rule, expansions_idx:list) -> str:
+        
+        curr_exp = rule.at(expansions_idx.pop(0))
+        # print(f"selected expansion: {curr_exp}")
+        terms_was_list = False
+        if type(curr_exp.terms) == list or type(curr_exp.terms) == tuple:
+            terms = list(curr_exp.terms)
+            terms_was_list = True
+        else:
+            terms = [curr_exp.terms]
+        exp_str = ""
+        
+        for term in terms:
+            # print(f"term: {term}")
+            if self.is_rule(term):
+                # print("is_rule")
+                exp_str += " "+self._expand_idxs_helper(self.rule(term), expansions_idx)
+            else:
+                # print("not a rule")
+                exp_str += " "+str(term)
+        
+        exp_str = exp_str.strip()
+        if terms_was_list:
+            exp_str = "("+exp_str+")"
+        
+        return exp_str
+
+    def expand_idxs(self, expansions_idxs:list[int]) -> str:
+        starting_rule = self.starting_rule
+        expansion_str = self._expand_idxs_helper(starting_rule, list(expansions_idxs))
+        return expansion_str
+            
     @property
     def starting_rule(self) -> Rule:
         return self.all_rules[self._starting_rule]
