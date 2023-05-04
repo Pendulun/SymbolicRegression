@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import List, Tuple, Callable
 
 class Grammar():
     def __init__(self):
@@ -83,7 +84,7 @@ class Rule():
         return rule_str
 
 class Expansion():
-    def __init__(self, expansion_terms:str|int|float|tuple):
+    def __init__(self, expansion_terms:List| Tuple):
         self._expansion_terms = expansion_terms
     
     @property
@@ -112,23 +113,37 @@ class Expansion():
         return exp_str
 
 class NumericExp(Expansion):
+
+    def __init__(self, expansion_term: int| float):
+        super().__init__([expansion_term])
+    
     @property
     def terms(self):
-        return self._expansion_term
-    
-    def __init__(self, expansion_term: int| float):
-        self._expansion_term = expansion_term
+        return self._expansion_terms[0]
     
     def __str__(self):
-        return str(self._expansion_term)
+        return str(self._expansion_terms[0])
 
 class StrExp(Expansion):
+        
+    def __init__(self, expansion_term: str):
+        super().__init__([expansion_term])
+    
     @property
     def terms(self):
-        return self._expansion_term
-    
-    def __init__(self, expansion_term: str):
-        self._expansion_term = expansion_term
+        return self._expansion_terms[0]
     
     def __str__(self):
-        return self._expansion_term
+        return self._expansion_terms[0]
+
+class FuncExpr(Expansion):
+    def __init__(self, expansion_term: Callable, expansion_name:str):
+        super().__init__([expansion_name])
+        self._expansion_func = expansion_term
+    
+    @property
+    def terms(self):
+        return self._expansion_terms[0]
+    
+    def __str__(self):
+        return self._expansion_terms[0]

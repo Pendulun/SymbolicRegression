@@ -1,5 +1,6 @@
 from unittest import main, TestCase
-from grammar import Grammar, Rule, Expansion, NumericExp, StrExp
+from grammar import Grammar, Rule, Expansion, NumericExp, StrExp, FuncExpr
+import math
 
 class TestGrammar(TestCase):
 
@@ -11,7 +12,9 @@ class TestGrammar(TestCase):
 
         terminal_rules = [
             Rule('var', [StrExp('X1'), StrExp('X2'), StrExp('X3')]),
-            Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)])
+            Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)]),
+            Rule('binop', [FuncExpr(lambda a,b: a+b, 'sum'), FuncExpr(lambda a,b: a-b, 'minus')]),
+            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
         ]
         grammar = Grammar()
         for rule in non_terminal_rules:
@@ -30,7 +33,7 @@ class TestGrammar(TestCase):
     def test_can_print_grammar(self):
         grammar = self.get_grammar()
         
-        expected_grammar_str = "expr: term binop term | unop term\nterm: var | const\nvar: X1 | X2 | X3\nconst: 1 | 2 | 3 | 4"
+        expected_grammar_str = "expr: term binop term | unop term\nterm: var | const\nvar: X1 | X2 | X3\nconst: 1 | 2 | 3 | 4\nbinop: sum | minus\nunop: squared | sqrt"
         self.assertEqual(str(grammar), expected_grammar_str)
     
     def test_can_set_starting_rule(self):
