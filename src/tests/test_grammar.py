@@ -1,6 +1,6 @@
 from unittest import main, TestCase
 from grammar import Grammar, Rule, Expansion, NumericExp, StrExp, FuncExpr
-from grammar import ExpansionListIndGenerator
+from grammar import ExpansionListIndGenerator, GrowIndGenerator
 from grammar import ConstNode, VarNode, UnOPNode, BinOPNode, Individual
 import math
 
@@ -10,14 +10,14 @@ class TestGrammar(TestCase):
         non_terminal_rules = [
             Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
                           Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))]),
-            Rule('term', [StrExp('var'), StrExp('const')])
+            Rule('term', [StrExp('var'), StrExp('const')]),
+            Rule('binop', [FuncExpr(lambda a,b: a+b, '+'), FuncExpr(lambda a,b: a-b, '-')]),
+            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
         ]
 
         terminal_rules = [
             Rule('var', [StrExp('X1'), StrExp('X2'), StrExp('X3')]),
-            Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)]),
-            Rule('binop', [FuncExpr(lambda a,b: a+b, '+'), FuncExpr(lambda a,b: a-b, '-')]),
-            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
+            Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)])
         ]
         self.grammar = Grammar()
         for rule in non_terminal_rules:
@@ -35,10 +35,10 @@ class TestGrammar(TestCase):
     def test_can_print_grammar(self):
         expected_grammar_str = "expr: term binop term | unop term | expr binop expr | unop expr"
         expected_grammar_str +="\nterm: var | const"
-        expected_grammar_str +="\nvar: X1 | X2 | X3"
-        expected_grammar_str +="\nconst: 1 | 2 | 3 | 4"
         expected_grammar_str +="\nbinop: + | -"
         expected_grammar_str +="\nunop: squared | sqrt"
+        expected_grammar_str +="\nvar: X1 | X2 | X3"
+        expected_grammar_str +="\nconst: 1 | 2 | 3 | 4"
         self.assertEqual(str(self.grammar), expected_grammar_str)
     
     def test_can_set_starting_rule(self):
@@ -76,14 +76,14 @@ class TestIndividualGenerator(TestCase):
         non_terminal_rules = [
             Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
                           Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))]),
-            Rule('term', [StrExp('var'), StrExp('const')])
+            Rule('term', [StrExp('var'), StrExp('const')]),
+            Rule('binop', [FuncExpr(lambda a,b: a+b, '+'), FuncExpr(lambda a,b: a-b, '-')]),
+            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
         ]
 
         terminal_rules = [
             Rule('var', [StrExp('X1'), StrExp('X2'), StrExp('X3')]),
             Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)]),
-            Rule('binop', [FuncExpr(lambda a,b: a+b, '+'), FuncExpr(lambda a,b: a-b, '-')]),
-            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
         ]
         self.grammar = Grammar()
         for rule in non_terminal_rules:
@@ -102,6 +102,12 @@ class TestIndividualGenerator(TestCase):
         individual_str = str(individual)
         expected_individual_str = "(squared (sqrt (X2)) + (X1 - X3))"
         self.assertEqual(individual_str, expected_individual_str)
+    
+    def test_can_generate_individual_grow_method(self):
+        grow_ind_generator = GrowIndGenerator(self.grammar)
+        max_depth = 4
+        individual = grow_ind_generator.generate(max_depth)
+        self.assertLessEqual(individual.depth, max_depth)
 
 class TestIndividual(TestCase):
     def test_can_evaluate_const_node(self):

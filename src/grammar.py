@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List, Tuple, Callable
+import random
 
 class Grammar():
     def __init__(self):
@@ -27,6 +28,9 @@ class Grammar():
         
         #this overrides previous definition
         self.all_rules[rule.name] = rule
+    
+    def random_terminal_rule(self) -> Rule:
+        return self.rule(random.choice(self.terminal_rules))
     
     def _expand_idxs_helper(self, rule:Rule, expansions_idx:list) -> str:
         
@@ -113,6 +117,9 @@ class Rule():
         rule_str = rule_str.strip()[:-2]
         return rule_str
 
+    def __len__(self):
+        return len(self._expansions)
+
 class Expansion():
     def __init__(self, expansion_terms:List| Tuple):
         self._expansion_terms = expansion_terms
@@ -141,6 +148,9 @@ class Expansion():
         
         exp_str = exp_str.strip()
         return exp_str
+
+    def __len__(self):
+        return len(self._expansion_terms)
 
 class NumericExp(Expansion):
 
@@ -189,9 +199,14 @@ class FuncExpr(Expansion):
 class Individual():
     def __init__(self, root_node:Node):
         self._root = root_node
+        self._depth = None
 
     def evaluate(self, data = None):
         return self._root.evaluate(data)
+
+    @property
+    def depth(self) -> int:
+        return self._root.depth
     
     def __str__(self):
         return str(self._root)
@@ -200,12 +215,24 @@ class Node():
     def __init__(self, value = None):
         self._value = value
         self._childs:List[Node] = list()
+        self._depth = None
     
     def add_child(self, new_child:Node):
         self._childs.append(new_child)
     
     def evaluate(self, *args):
         raise NotImplementedError(f"evaluate not implemented for {self.__class__.__name__} class!")
+
+    @property
+    def depth(self) -> int:
+        if self._depth == None:
+            childs_depths = [child.depth for child in self._childs]
+            if len(childs_depths) > 0:
+                self._depth =  max(childs_depths)+1
+            else:
+                self._depth = 1
+
+        return self._depth
     
     @property
     def value(self):
@@ -256,7 +283,7 @@ class UnOPNode(OPNode):
         return self.func(self._childs[0].evaluate(*args))
     
     def __str__(self):
-        my_str = self.value+" ("
+        my_str = str(self.value)+" ("
         my_str += str(self._childs[0])+")"
         return my_str
 
@@ -296,7 +323,7 @@ class ConstNode(Node):
             return self.value
     
     def __str__(self):
-        return self.value
+        return str(self.value)
 
 class IndividualGenerator():
     def __init__(self, grammar:Grammar):
@@ -316,9 +343,9 @@ class IndividualGenerator():
 class ExpansionListIndGenerator(IndividualGenerator):
     def generate(self, expansion_idxs: list[int]) -> Individual:
         starting_rule = self.grammar.starting_rule
-        return Individual(self._ind_from_exps_helper(starting_rule, list(expansion_idxs)))
+        return Individual(self._generator_helper(starting_rule, list(expansion_idxs)))
 
-    def _ind_from_exps_helper(self, rule:Rule, expansions_idx:list) -> Node:
+    def _generator_helper(self, rule:Rule, expansions_idx:list) -> Node:
         curr_exp = rule.at(expansions_idx.pop(0))
 
         if type(curr_exp.terms) in [list, tuple]:
@@ -329,16 +356,16 @@ class ExpansionListIndGenerator(IndividualGenerator):
                 curr_node_str = expansion.terms
                 curr_node_func = expansion.func
                 curr_node = UnOPNode(curr_node_str, curr_node_func)
-                child_node = self._ind_from_exps_helper(self.grammar.rule(terms[1]), expansions_idx)
+                child_node = self._generator_helper(self.grammar.rule(terms[1]), expansions_idx)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
-                left_child = self._ind_from_exps_helper(self.grammar.rule(terms[0]), expansions_idx)
+                left_child = self._generator_helper(self.grammar.rule(terms[0]), expansions_idx)
                 expansion:FuncExpr = self.grammar.rule(terms[1]).at(expansions_idx.pop(0))
                 curr_node_str = expansion.terms
                 func = expansion.func
                 curr_node = BinOPNode(curr_node_str, func)
-                right_child = self._ind_from_exps_helper(self.grammar.rule(terms[2]), expansions_idx)
+                right_child = self._generator_helper(self.grammar.rule(terms[2]), expansions_idx)
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
                 return curr_node
@@ -355,3 +382,67 @@ class ExpansionListIndGenerator(IndividualGenerator):
     
     def _is_a_var_node(self, node_value:str) -> bool:
         return node_value[0] == "X"
+
+class GrowIndGenerator(IndividualGenerator):
+    def generate(self, max_depth:int) -> Individual:
+        starting_rule = self.grammar.starting_rule
+        return Individual(self._generator_helper(starting_rule, max_depth))
+    
+    def _generator_helper(self, rule:Rule, max_depth:int) -> Node:
+        if max_depth == 1:
+            print("Max depth!")
+            curr_rule = self.grammar.random_terminal_rule()
+            expansion:Expansion = curr_rule.at(self._random_exp_from_rule(curr_rule))
+            curr_node_value = expansion.terms
+            print(f"Returning: {curr_node_value}")
+            if self._is_a_var_node(curr_node_value):
+                return VarNode(curr_node_value)
+            else:
+                return ConstNode(curr_node_value)
+        
+        random_exp = self._random_exp_from_rule(rule)
+        curr_exp = rule.at(random_exp)
+
+        if type(curr_exp.terms) in [list, tuple]:
+            terms = list(curr_exp.terms)
+
+            if len(terms) == 2:
+                curr_rule = self.grammar.rule(terms[0])
+                expansion:FuncExpr = curr_rule.at(self._random_exp_from_rule(curr_rule))
+                curr_node_str = expansion.terms
+                curr_node_func = expansion.func
+                curr_node = UnOPNode(curr_node_str, curr_node_func)
+                child_node = self._generator_helper(self.grammar.rule(terms[1]), max_depth-1)
+                curr_node.add_child(child_node)
+                return curr_node
+            elif len(terms) == 3:
+                left_child = self._generator_helper(self.grammar.rule(terms[0]), max_depth-1)
+                curr_rule = self.grammar.rule(terms[1])
+                expansion:FuncExpr = curr_rule.at(self._random_exp_from_rule(curr_rule))
+                curr_node_str = expansion.terms
+                func = expansion.func
+                curr_node = BinOPNode(curr_node_str, func)
+                right_child = self._generator_helper(self.grammar.rule(terms[2]), max_depth-1)
+                curr_node.add_child(left_child)
+                curr_node.add_child(right_child)
+                return curr_node
+            else:
+                raise ValueError("Terms size is not 2 or 3!")
+        
+        else:
+            #There is only one value inside the current expansion, that is, a rule
+            curr_rule = self.grammar.rule(curr_exp.terms)
+            curr_node_value = curr_rule.at(self._random_exp_from_rule(curr_rule)).terms
+            if self._is_a_var_node(curr_node_value):
+                return VarNode(curr_node_value)
+            else:
+                return ConstNode(curr_node_value)
+    
+    def _random_exp_from_rule(self, rule:Rule) -> Expansion:
+        return random.randint(0, len(rule)-1)
+    
+    def _is_a_var_node(self, node_value) -> bool:
+        if isinstance(node_value, str):
+            return node_value[0] == "X" 
+        
+        return False
