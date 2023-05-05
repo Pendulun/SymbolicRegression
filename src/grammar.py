@@ -321,27 +321,22 @@ class ExpansionListIndGenerator(IndividualGenerator):
     def _ind_from_exps_helper(self, rule:Rule, expansions_idx:list) -> Node:
         curr_exp = rule.at(expansions_idx.pop(0))
 
-        print(f"expansion: '{curr_exp.terms}'")
         if type(curr_exp.terms) in [list, tuple]:
             terms = list(curr_exp.terms)
 
             if len(terms) == 2:
-                print("Eh unario")
                 expansion:FuncExpr = self.grammar.rule(terms[0]).at(expansions_idx.pop(0))
                 curr_node_str = expansion.terms
                 curr_node_func = expansion.func
-                print(f"node value: {curr_node_str}")
                 curr_node = UnOPNode(curr_node_str, curr_node_func)
                 child_node = self._ind_from_exps_helper(self.grammar.rule(terms[1]), expansions_idx)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
-                print("Eh binario")
                 left_child = self._ind_from_exps_helper(self.grammar.rule(terms[0]), expansions_idx)
                 expansion:FuncExpr = self.grammar.rule(terms[1]).at(expansions_idx.pop(0))
                 curr_node_str = expansion.terms
                 func = expansion.func
-                print(f"node value: {curr_node_str}")
                 curr_node = BinOPNode(curr_node_str, func)
                 right_child = self._ind_from_exps_helper(self.grammar.rule(terms[2]), expansions_idx)
                 curr_node.add_child(left_child)
@@ -353,12 +348,9 @@ class ExpansionListIndGenerator(IndividualGenerator):
         else:
             #There is only one value inside the current expansion, that is, a rule
             curr_node_value = self.grammar.rule(curr_exp.terms).at(expansions_idx.pop(0)).terms
-            print(f"node value: {curr_node_value}")
             if self._is_a_var_node(curr_node_value):
-                print("Eh var")
                 return VarNode(curr_node_value)
             else:
-                print("Eh const")
                 return ConstNode(curr_node_value)
     
     def _is_a_var_node(self, node_value:str) -> bool:

@@ -81,6 +81,31 @@ class TestGrammar(TestCase):
         expansion_result = grammar.expand_idxs(expansion_idxs)
         self.assertEqual(expansion_result, expected_expansion_str)
     
+class TestIndividualGenerator(TestCase):
+    def get_grammar(self)->Grammar:
+        non_terminal_rules = [
+            Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
+                          Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))]),
+            Rule('term', [StrExp('var'), StrExp('const')])
+        ]
+
+        terminal_rules = [
+            Rule('var', [StrExp('X1'), StrExp('X2'), StrExp('X3')]),
+            Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)]),
+            Rule('binop', [FuncExpr(lambda a,b: a+b, '+'), FuncExpr(lambda a,b: a-b, '-')]),
+            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
+        ]
+        grammar = Grammar()
+        for rule in non_terminal_rules:
+            grammar.add_non_terminal_rule(rule)
+        
+        for rule in terminal_rules:
+            grammar.add_terminal_rule(rule)
+        
+        grammar.starting_rule = 'expr'
+        
+        return grammar
+    
     def test_can_generate_individual_from_grammar_based_on_expansion_list(self):
         grammar = self.get_grammar()
         exp_list_ind_generator = ExpansionListIndGenerator(grammar)
