@@ -1,5 +1,5 @@
 from unittest import main, TestCase
-from grammar import Grammar, Rule, Expansion, NumericExp, StrExp, FuncExpr
+from grammar import Grammar, Rule, Expansion, NumericExp, StrExp, FuncExpr, Individual
 import math
 
 class TestGrammar(TestCase):
@@ -78,6 +78,14 @@ class TestGrammar(TestCase):
         grammar = self.get_grammar()
         expansion_result = grammar.expand_idxs(expansion_idxs)
         self.assertEqual(expansion_result, expected_expansion_str)
+    
+    def test_can_generate_individual_from_grammar_based_on_expansion_list(self):
+        grammar = self.get_grammar()
+        expansion_idxs = [2, 3, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 2]
+        individual = grammar.individual_from_expansions(expansion_idxs)
+        individual_str = str(individual)
+        expected_individual_str = "(squared (sqrt (X2)) + (X1 - X3))"
+        self.assertEqual(individual_str, expected_individual_str)
 
 
 if __name__ == "__main__":

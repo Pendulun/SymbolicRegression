@@ -31,9 +31,9 @@ class Grammar():
     def _expand_idxs_helper(self, rule:Rule, expansions_idx:list) -> str:
         
         curr_exp = rule.at(expansions_idx.pop(0))
-        # print(f"selected expansion: {curr_exp}")
+
         terms_was_list = False
-        if type(curr_exp.terms) == list or type(curr_exp.terms) == tuple:
+        if type(curr_exp.terms) in [list, tuple]:
             terms = list(curr_exp.terms)
             terms_was_list = True
         else:
@@ -41,12 +41,9 @@ class Grammar():
         exp_str = ""
         
         for term in terms:
-            # print(f"term: {term}")
             if self.is_rule(term):
-                # print("is_rule")
                 exp_str += " "+self._expand_idxs_helper(self.rule(term), expansions_idx)
             else:
-                # print("not a rule")
                 exp_str += " "+str(term)
         
         exp_str = exp_str.strip()
@@ -56,9 +53,52 @@ class Grammar():
         return exp_str
 
     def expand_idxs(self, expansions_idxs:list[int]) -> str:
-        starting_rule = self.starting_rule
-        expansion_str = self._expand_idxs_helper(starting_rule, list(expansions_idxs))
-        return expansion_str
+        return self._expand_idxs_helper(self.starting_rule, list(expansions_idxs))
+    
+    def _is_a_var_node(self, node_value:str) -> bool:
+        return node_value[0] == "X"
+
+    def _ind_from_exps_helper(self, rule:Rule, expansions_idx:list) -> Node:
+        curr_exp = rule.at(expansions_idx.pop(0))
+
+        print(f"expansion: '{curr_exp.terms}'")
+        if type(curr_exp.terms) in [list, tuple]:
+            terms = list(curr_exp.terms)
+
+            if len(terms) == 2:
+                print("Eh unario")
+                curr_node_value = self.rule(terms[0]).at(expansions_idx.pop(0)).terms
+                print(f"node value: {curr_node_value}")
+                curr_node = UnOPNode(curr_node_value)
+                child_node = self._ind_from_exps_helper(self.rule(terms[1]), expansions_idx)
+                curr_node.add_child(child_node)
+                return curr_node
+            elif len(terms) == 3:
+                print("Eh binario")
+                left_child = self._ind_from_exps_helper(self.rule(terms[0]), expansions_idx)
+                curr_node_value = self.rule(terms[1]).at(expansions_idx.pop(0)).terms
+                print(f"node value: {curr_node_value}")
+                curr_node = BinOPNode(curr_node_value)
+                right_child = self._ind_from_exps_helper(self.rule(terms[2]), expansions_idx)
+                curr_node.add_child(left_child)
+                curr_node.add_child(right_child)
+                return curr_node
+            else:
+                raise ValueError("Terms size is not 2 or 3!")
+        
+        else:
+            #There is only one value inside the current expansion, that is, a rule
+            curr_node_value = self.rule(curr_exp.terms).at(expansions_idx.pop(0)).terms
+            print(f"node value: {curr_node_value}")
+            if self._is_a_var_node(curr_node_value):
+                print("Eh var")
+                return VarNode(curr_node_value)
+            else:
+                print("Eh const")
+                return ConstNode(curr_node_value)
+
+    def individual_from_expansions(self, expansion_idxs: list[int]) -> Individual:
+        return Individual(self._ind_from_exps_helper(self.starting_rule, list(expansion_idxs)))
             
     @property
     def starting_rule(self) -> Rule:
@@ -182,3 +222,72 @@ class FuncExpr(Expansion):
     
     def __str__(self):
         return self._expansion_terms[0]
+
+class Individual():
+    def __init__(self, root_node:Node):
+        self._root = root_node
+    
+    def __str__(self):
+        return str(self._root)
+
+class Node():
+    def __init__(self, value = None):
+        self._value = value
+        self._childs = list()
+    
+    def add_child(self, new_child:Node):
+        self._childs.append(new_child)
+    
+    @property
+    def value(self):
+        return self._value
+    
+    @value.setter
+    def value(self, new_value):
+        self._value = new_value
+    
+    def __str__(self):
+        my_str = str(self._value)
+        for child in self._childs:
+            my_str += " "+str(child)
+        
+        return my_str
+
+class BinOPNode(Node):
+    def __init__(self, value:None):
+        super().__init__(value)
+
+    def __str__(self):
+        my_str = "("+str(self._childs[0])+" "
+        my_str += str(self.value)
+        my_str += " "+str(self._childs[1])+")"
+        return my_str
+
+class UnOPNode(Node):
+    def __init__(self, value:None):
+        super().__init__(value)
+    
+    def __str__(self):
+        my_str = self.value+" ("
+        my_str += str(self._childs[0])+")"
+        return my_str
+
+class VarNode(Node):
+    def __init__(self, value:None):
+        super().__init__(value)
+    
+    def add_child(self, new_child: Node):
+        raise NotImplementedError("I'm a VarNode, I don't have children!")
+    
+    def __str__(self):
+        return self.value
+
+class ConstNode(Node):
+    def __init__(self, value:None):
+        super().__init__(value)
+    
+    def add_child(self, new_child: Node):
+        raise NotImplementedError("I'm a ConstNode, I don't have children!")
+    
+    def __str__(self):
+        return self.value
