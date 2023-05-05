@@ -67,18 +67,22 @@ class Grammar():
 
             if len(terms) == 2:
                 print("Eh unario")
-                curr_node_value = self.rule(terms[0]).at(expansions_idx.pop(0)).terms
-                print(f"node value: {curr_node_value}")
-                curr_node = UnOPNode(curr_node_value)
+                expansion:FuncExpr = self.rule(terms[0]).at(expansions_idx.pop(0))
+                curr_node_str = expansion.terms
+                curr_node_func = expansion.func
+                print(f"node value: {curr_node_str}")
+                curr_node = UnOPNode(curr_node_str, curr_node_func)
                 child_node = self._ind_from_exps_helper(self.rule(terms[1]), expansions_idx)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
                 print("Eh binario")
                 left_child = self._ind_from_exps_helper(self.rule(terms[0]), expansions_idx)
-                curr_node_value = self.rule(terms[1]).at(expansions_idx.pop(0)).terms
-                print(f"node value: {curr_node_value}")
-                curr_node = BinOPNode(curr_node_value)
+                expansion:FuncExpr = self.rule(terms[1]).at(expansions_idx.pop(0))
+                curr_node_str = expansion.terms
+                func = expansion.func
+                print(f"node value: {curr_node_str}")
+                curr_node = BinOPNode(curr_node_str, func)
                 right_child = self._ind_from_exps_helper(self.rule(terms[2]), expansions_idx)
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
@@ -220,12 +224,23 @@ class FuncExpr(Expansion):
     def terms(self):
         return self._expansion_terms[0]
     
+    @property
+    def func(self) -> Callable:
+        return self._expansion_func
+    
+    @func.setter
+    def func(self, new_func:Callable):
+        raise AttributeError("func is not subscriptable!")
+    
     def __str__(self):
         return self._expansion_terms[0]
 
 class Individual():
     def __init__(self, root_node:Node):
         self._root = root_node
+
+    def evaluate(self, data = None):
+        return self._root.evaluate(data)
     
     def __str__(self):
         return str(self._root)
@@ -233,10 +248,13 @@ class Individual():
 class Node():
     def __init__(self, value = None):
         self._value = value
-        self._childs = list()
+        self._childs:List[Node] = list()
     
     def add_child(self, new_child:Node):
         self._childs.append(new_child)
+    
+    def evaluate(self, *args):
+        raise NotImplementedError(f"evaluate not implemented for {self.__class__.__name__} class!")
     
     @property
     def value(self):
@@ -253,9 +271,25 @@ class Node():
         
         return my_str
 
-class BinOPNode(Node):
-    def __init__(self, value:None):
+class OPNode(Node):
+    def __init__(self, value, func:Callable):
         super().__init__(value)
+        self._func = func
+    
+    @property
+    def func(self) -> Callable:
+        return self._func
+    
+    @func.setter
+    def func(self, new_func:Callable):
+        raise AttributeError(f"Func is not subscriptable for {self.__class__.__name__}!")
+
+class BinOPNode(OPNode):
+    def __init__(self, value, func:Callable):
+        super().__init__(value, func)
+
+    def evaluate(self, *args):
+        return self.func(self._childs[0].evaluate(*args), self._childs[1].evaluate(*args))
 
     def __str__(self):
         my_str = "("+str(self._childs[0])+" "
@@ -263,9 +297,12 @@ class BinOPNode(Node):
         my_str += " "+str(self._childs[1])+")"
         return my_str
 
-class UnOPNode(Node):
-    def __init__(self, value:None):
-        super().__init__(value)
+class UnOPNode(OPNode):
+    def __init__(self, value, func:Callable):
+        super().__init__(value, func)
+    
+    def evaluate(self, *args):
+        return self.func(self._childs[0].evaluate(*args))
     
     def __str__(self):
         my_str = self.value+" ("
@@ -279,6 +316,10 @@ class VarNode(Node):
     def add_child(self, new_child: Node):
         raise NotImplementedError("I'm a VarNode, I don't have children!")
     
+    def evaluate(self, *args):
+        vars_dict:dict = args[0]
+        return vars_dict[self.value]
+    
     def __str__(self):
         return self.value
 
@@ -288,6 +329,20 @@ class ConstNode(Node):
     
     def add_child(self, new_child: Node):
         raise NotImplementedError("I'm a ConstNode, I don't have children!")
+
+    def _is_float(self, value: float | int):
+        return value % 1 > 0
+
+    def evaluate(self, *args):
+        try:
+            my_value = float(self.value)
+            if self._is_float(my_value):
+                return my_value
+            else:
+                return int(my_value)
+        except:
+            #It is a string
+            return self.value
     
     def __str__(self):
         return self.value

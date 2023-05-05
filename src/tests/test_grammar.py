@@ -1,5 +1,6 @@
 from unittest import main, TestCase
-from grammar import Grammar, Rule, Expansion, NumericExp, StrExp, FuncExpr, Individual
+from grammar import Grammar, Rule, Expansion, NumericExp, StrExp, FuncExpr
+from grammar import ConstNode, VarNode, UnOPNode, BinOPNode, Individual
 import math
 
 class TestGrammar(TestCase):
@@ -87,6 +88,57 @@ class TestGrammar(TestCase):
         expected_individual_str = "(squared (sqrt (X2)) + (X1 - X3))"
         self.assertEqual(individual_str, expected_individual_str)
 
+class TestIndividual(TestCase):
+    def test_can_evaluate_const_node(self):
+        const_node = ConstNode(3)
+        self.assertEqual(const_node.evaluate(), 3)
+    
+    def test_can_evaluate_var_node(self):
+        var_dict = {'X1':2, "X0":4, "Y":7}
+        var_node = VarNode("X1")
+        self.assertEqual(var_node.evaluate(var_dict), 2)
+    
+    def test_can_evaluate_unop_node(self):
+        parent_node = UnOPNode('squared', lambda a: a**2)
+        child_node = ConstNode(3.5)
+        parent_node.add_child(child_node)
+
+        self.assertEqual(parent_node.evaluate(), 3.5**2)
+    
+    def test_can_evaluate_binop_node(self):
+        parent_node = BinOPNode('sum', lambda a, b: a+b)
+        left_child_node = ConstNode(3.5)
+        parent_node.add_child(left_child_node)
+        right_child_node = UnOPNode("abs", lambda a: abs(a))
+        negative_node = ConstNode(-4)
+        right_child_node.add_child(negative_node)
+        parent_node.add_child(right_child_node)
+
+        self.assertEqual(parent_node.evaluate(), 3.5 + abs(-4))
+    
+    def test_can_evaluate_complex_individual_with_data(self):
+        data={"X0":1, "X2":-2, "X3":3, "Y":6}
+        #((X0-X3) + sqrt(abs(X2)))
+        root_node = BinOPNode('+', lambda a,b: a+b)
+        l1_left_node = BinOPNode('-', lambda a,b: a-b)
+        l1_right_node = UnOPNode('sqrt', lambda a: a**0.5)
+        root_node.add_child(l1_left_node)
+        root_node.add_child(l1_right_node)
+
+        l2_1_left_node = VarNode("X0")
+        l2_1_right_node = VarNode("X3")
+        l1_left_node.add_child(l2_1_left_node)
+        l1_left_node.add_child(l2_1_right_node)
+
+        l2_2_child_node = UnOPNode('abs', lambda a: abs(a))
+        l1_right_node.add_child(l2_2_child_node)
+
+        l3_child_node = VarNode("X2")
+        l2_2_child_node.add_child(l3_child_node)
+
+        individual = Individual(root_node)
+        expected_result = ((data['X0']-data['X3']) + math.sqrt(abs(data['X2'])))
+        self.assertEqual(individual.evaluate(data), expected_result)
 
 if __name__ == "__main__":
     main()
