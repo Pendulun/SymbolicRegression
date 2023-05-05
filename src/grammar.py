@@ -54,55 +54,6 @@ class Grammar():
 
     def expand_idxs(self, expansions_idxs:list[int]) -> str:
         return self._expand_idxs_helper(self.starting_rule, list(expansions_idxs))
-    
-    def _is_a_var_node(self, node_value:str) -> bool:
-        return node_value[0] == "X"
-
-    def _ind_from_exps_helper(self, rule:Rule, expansions_idx:list) -> Node:
-        curr_exp = rule.at(expansions_idx.pop(0))
-
-        print(f"expansion: '{curr_exp.terms}'")
-        if type(curr_exp.terms) in [list, tuple]:
-            terms = list(curr_exp.terms)
-
-            if len(terms) == 2:
-                print("Eh unario")
-                expansion:FuncExpr = self.rule(terms[0]).at(expansions_idx.pop(0))
-                curr_node_str = expansion.terms
-                curr_node_func = expansion.func
-                print(f"node value: {curr_node_str}")
-                curr_node = UnOPNode(curr_node_str, curr_node_func)
-                child_node = self._ind_from_exps_helper(self.rule(terms[1]), expansions_idx)
-                curr_node.add_child(child_node)
-                return curr_node
-            elif len(terms) == 3:
-                print("Eh binario")
-                left_child = self._ind_from_exps_helper(self.rule(terms[0]), expansions_idx)
-                expansion:FuncExpr = self.rule(terms[1]).at(expansions_idx.pop(0))
-                curr_node_str = expansion.terms
-                func = expansion.func
-                print(f"node value: {curr_node_str}")
-                curr_node = BinOPNode(curr_node_str, func)
-                right_child = self._ind_from_exps_helper(self.rule(terms[2]), expansions_idx)
-                curr_node.add_child(left_child)
-                curr_node.add_child(right_child)
-                return curr_node
-            else:
-                raise ValueError("Terms size is not 2 or 3!")
-        
-        else:
-            #There is only one value inside the current expansion, that is, a rule
-            curr_node_value = self.rule(curr_exp.terms).at(expansions_idx.pop(0)).terms
-            print(f"node value: {curr_node_value}")
-            if self._is_a_var_node(curr_node_value):
-                print("Eh var")
-                return VarNode(curr_node_value)
-            else:
-                print("Eh const")
-                return ConstNode(curr_node_value)
-
-    def individual_from_expansions(self, expansion_idxs: list[int]) -> Individual:
-        return Individual(self._ind_from_exps_helper(self.starting_rule, list(expansion_idxs)))
             
     @property
     def starting_rule(self) -> Rule:
@@ -346,3 +297,69 @@ class ConstNode(Node):
     
     def __str__(self):
         return self.value
+
+class IndividualGenerator():
+    def __init__(self, grammar:Grammar):
+        self._grammar = grammar
+    
+    def generate(self, *args):
+        raise NotImplementedError("generate is not implemented!")
+    
+    @property
+    def grammar(self) -> Grammar:
+        return self._grammar
+
+    @grammar.setter
+    def grammar(self, new_grammar:Grammar):
+        raise AttributeError("grammar is not subscriptable!")
+
+class ExpansionListIndGenerator(IndividualGenerator):
+    def generate(self, expansion_idxs: list[int]) -> Individual:
+        starting_rule = self.grammar.starting_rule
+        return Individual(self._ind_from_exps_helper(starting_rule, list(expansion_idxs)))
+
+    def _ind_from_exps_helper(self, rule:Rule, expansions_idx:list) -> Node:
+        curr_exp = rule.at(expansions_idx.pop(0))
+
+        print(f"expansion: '{curr_exp.terms}'")
+        if type(curr_exp.terms) in [list, tuple]:
+            terms = list(curr_exp.terms)
+
+            if len(terms) == 2:
+                print("Eh unario")
+                expansion:FuncExpr = self.grammar.rule(terms[0]).at(expansions_idx.pop(0))
+                curr_node_str = expansion.terms
+                curr_node_func = expansion.func
+                print(f"node value: {curr_node_str}")
+                curr_node = UnOPNode(curr_node_str, curr_node_func)
+                child_node = self._ind_from_exps_helper(self.grammar.rule(terms[1]), expansions_idx)
+                curr_node.add_child(child_node)
+                return curr_node
+            elif len(terms) == 3:
+                print("Eh binario")
+                left_child = self._ind_from_exps_helper(self.grammar.rule(terms[0]), expansions_idx)
+                expansion:FuncExpr = self.grammar.rule(terms[1]).at(expansions_idx.pop(0))
+                curr_node_str = expansion.terms
+                func = expansion.func
+                print(f"node value: {curr_node_str}")
+                curr_node = BinOPNode(curr_node_str, func)
+                right_child = self._ind_from_exps_helper(self.grammar.rule(terms[2]), expansions_idx)
+                curr_node.add_child(left_child)
+                curr_node.add_child(right_child)
+                return curr_node
+            else:
+                raise ValueError("Terms size is not 2 or 3!")
+        
+        else:
+            #There is only one value inside the current expansion, that is, a rule
+            curr_node_value = self.grammar.rule(curr_exp.terms).at(expansions_idx.pop(0)).terms
+            print(f"node value: {curr_node_value}")
+            if self._is_a_var_node(curr_node_value):
+                print("Eh var")
+                return VarNode(curr_node_value)
+            else:
+                print("Eh const")
+                return ConstNode(curr_node_value)
+    
+    def _is_a_var_node(self, node_value:str) -> bool:
+        return node_value[0] == "X"
