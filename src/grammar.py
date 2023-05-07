@@ -32,6 +32,12 @@ class Grammar():
     def random_terminal_rule(self) -> Rule:
         return self.rule(random.choice(self.terminal_rules))
     
+    def random_non_terminal_exp_from_rule(self, rule_str:str) -> Rule:
+        rule = self.rule(rule_str)
+        rule_expansions = rule.expansions
+        non_terminal_expansions = [exp for exp in rule_expansions if not exp.has_terminal()]
+        return self.rule(random.choice(non_terminal_expansions))
+    
     def _expand_idxs_helper(self, rule:Rule, expansions_idx:list) -> str:
         curr_exp = rule.at(expansions_idx.pop(0))
 
@@ -134,6 +140,9 @@ class Expansion():
     def to_node(self) -> Node:
         raise NotImplementedError(f"to_node is not implemented for {self.__class__.__name__}!")
 
+    def has_terminal(self) -> bool:
+        return any([term.is_terminal() for term in self.terms])
+
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, Expansion):
             return False
@@ -234,6 +243,9 @@ class Term:
     def value(self, new_value):
         raise AttributeError("value is not subscriptable!")
     
+    def is_terminal(self) -> bool:
+        raise NotImplementedError(f"is_terminal not implemented for {self.__class__.__name__}!")
+    
     def __str__(self):
         return str(self.value)
     
@@ -249,7 +261,22 @@ class Term:
     def __hash__(self) -> int:
         return hash(self.value)
 
-class FuncTerm(Term):
+class TerminalTerm(Term):
+
+    def __init__(self, value):
+        super().__init__(value)
+    
+    def is_terminal(self) -> bool:
+        return True
+    
+class NonTerminalTerm(Term):
+    def __init__(self, value):
+        super().__init__(value)
+    
+    def is_terminal(self) -> bool:
+        return False
+
+class FuncTerm(NonTerminalTerm):
     def __init__(self, value, func:Callable):
         super().__init__(value)
         self._func = func
@@ -498,9 +525,3 @@ class GrowIndGenerator(IndividualGenerator):
     
     def _random_exp_from_rule(self, rule:Rule) -> Expansion:
         return random.randint(0, len(rule)-1)
-    
-    def _is_a_var_node(self, node_value) -> bool:
-        if isinstance(node_value, str):
-            return node_value[0] == "X" 
-        
-        return False
