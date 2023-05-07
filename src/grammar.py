@@ -33,7 +33,6 @@ class Grammar():
         return self.rule(random.choice(self.terminal_rules))
     
     def _expand_idxs_helper(self, rule:Rule, expansions_idx:list) -> str:
-        
         curr_exp = rule.at(expansions_idx.pop(0))
 
         terms_was_list = False
@@ -45,8 +44,8 @@ class Grammar():
         exp_str = ""
         
         for term in terms:
-            if self.is_rule(term):
-                exp_str += " "+self._expand_idxs_helper(self.rule(term), expansions_idx)
+            if self.is_rule(term.value):
+                exp_str += " "+self._expand_idxs_helper(self.rule(term.value), expansions_idx)
             else:
                 exp_str += " "+str(term)
         
@@ -121,7 +120,7 @@ class Rule():
         return len(self._expansions)
 
 class Expansion():
-    def __init__(self, expansion_terms:List| Tuple):
+    def __init__(self, expansion_terms:List[Term]| Tuple[Term]):
         self._expansion_terms = expansion_terms
     
     @property
@@ -157,42 +156,42 @@ class Expansion():
 
 class NumericExp(Expansion):
 
-    def __init__(self, expansion_term: int| float):
-        super().__init__([expansion_term])
+    def __init__(self, term: Term):
+        super().__init__([term])
     
     @property
     def terms(self):
         return self._expansion_terms[0]
     
     def to_node(self) -> Node:
-        return ConstNode(self.terms)
+        return ConstNode(self.terms.value)
     
     def __str__(self):
-        return str(self._expansion_terms[0])
+        return str(self._expansion_terms[0].value)
 
 class StrExp(Expansion):
         
-    def __init__(self, expansion_term: str):
-        super().__init__([expansion_term])
+    def __init__(self, term: Term):
+        super().__init__([term])
     
     @property
     def terms(self):
         return self._expansion_terms[0]
     
     def __str__(self):
-        return self._expansion_terms[0]
+        return self._expansion_terms[0].value
 
 class VarExpr(StrExp):
-    def __init__(self, expansion_term: str):
-        super().__init__(expansion_term)
+    def __init__(self, term: Term):
+        super().__init__(term)
 
     def to_node(self) -> Node:
-        return VarNode(self.terms)
+        return VarNode(self.terms.value)
 
 class FuncExpr(Expansion):
-    def __init__(self, expansion_term: Callable, expansion_name:str):
-        super().__init__([expansion_name])
-        self._expansion_func = expansion_term
+    def __init__(self, term:FuncTerm):
+        super().__init__([term])
+        self._expansion_func = term.func
     
     @property
     def terms(self):
@@ -207,21 +206,76 @@ class FuncExpr(Expansion):
         raise AttributeError("func is not subscriptable!")
     
     def __str__(self):
-        return self._expansion_terms[0]
+        return self._expansion_terms[0].value
 
 class UnFuncExpr(FuncExpr):
-    def __init__(self, expansion_term: Callable[..., Any], expansion_name: str):
-        super().__init__(expansion_term, expansion_name)
+    def __init__(self, term:FuncTerm):
+        super().__init__(term)
     
     def to_node(self) -> Node:
         return UnOPNode(self.terms, self.func)
 
 class BinFuncExpr(FuncExpr):
-    def __init__(self, expansion_term: Callable[..., Any], expansion_name: str):
-        super().__init__(expansion_term, expansion_name)
+    def __init__(self, term:FuncTerm):
+        super().__init__(term)
     
     def to_node(self) -> Node:
         return BinOPNode(self.terms, self.func)
+
+class Term:
+    def __init__(self, value):
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
+    
+    @value.setter
+    def value(self, new_value):
+        raise AttributeError("value is not subscriptable!")
+    
+    def __str__(self):
+        return str(self.value)
+    
+    def __repr__(self) -> str:
+        return f'Term({self.value})'
+    
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Term):
+            return False
+        
+        return self.value == other.value
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+class FuncTerm(Term):
+    def __init__(self, value, func:Callable):
+        super().__init__(value)
+        self._func = func
+    
+    @property
+    def func(self) -> Callable:
+        return self._func
+
+    @func.setter
+    def func(self, new_func:Callable):
+        raise AttributeError("func is not subscriptable!")
+    
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FuncTerm):
+            return False
+        
+        return (self.value, self.func) == (other.value, other.func)
+    
+    def __repr__(self) -> str:
+        return f"FuncTerm({self.value}, {self.func})"
+    
+    def __hash__(self) -> int:
+        return hash((self.value, self.func))
+    
+    def __str__(self):
+        return str(self.value)
 
 class Individual():
     def __init__(self, root_node:Node):
@@ -315,7 +369,7 @@ class UnOPNode(OPNode):
         return my_str
 
 class VarNode(Node):
-    def __init__(self, value:None):
+    def __init__(self, value:Term):
         super().__init__(value)
     
     def add_child(self, new_child: Node):
@@ -379,16 +433,16 @@ class ExpansionListIndGenerator(IndividualGenerator):
             terms = list(curr_exp.terms)
 
             if len(terms) == 2:
-                expansion:UnFuncExpr = self.grammar.rule(terms[0]).at(expansions_idx.pop(0))
+                expansion:UnFuncExpr = self.grammar.rule(terms[0].value).at(expansions_idx.pop(0))
                 curr_node = expansion.to_node()
-                child_node = self._generator_helper(self.grammar.rule(terms[1]), expansions_idx)
+                child_node = self._generator_helper(self.grammar.rule(terms[1].value), expansions_idx)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
-                left_child = self._generator_helper(self.grammar.rule(terms[0]), expansions_idx)
-                expansion:BinFuncExpr = self.grammar.rule(terms[1]).at(expansions_idx.pop(0))
+                left_child = self._generator_helper(self.grammar.rule(terms[0].value), expansions_idx)
+                expansion:BinFuncExpr = self.grammar.rule(terms[1].value).at(expansions_idx.pop(0))
                 curr_node = expansion.to_node()
-                right_child = self._generator_helper(self.grammar.rule(terms[2]), expansions_idx)
+                right_child = self._generator_helper(self.grammar.rule(terms[2].value), expansions_idx)
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
                 return curr_node
@@ -397,7 +451,7 @@ class ExpansionListIndGenerator(IndividualGenerator):
         
         else:
             #There is only one value inside the current expansion, that is, a rule
-            expansion = self.grammar.rule(curr_exp.terms).at(expansions_idx.pop(0))
+            expansion = self.grammar.rule(curr_exp.terms.value).at(expansions_idx.pop(0))
             return expansion.to_node()
 
 class GrowIndGenerator(IndividualGenerator):
@@ -418,18 +472,18 @@ class GrowIndGenerator(IndividualGenerator):
             terms = list(curr_exp.terms)
 
             if len(terms) == 2:
-                curr_rule = self.grammar.rule(terms[0])
+                curr_rule = self.grammar.rule(terms[0].value)
                 expansion:FuncExpr = curr_rule.at(self._random_exp_from_rule(curr_rule))
                 curr_node = expansion.to_node()
-                child_node = self._generator_helper(self.grammar.rule(terms[1]), max_depth-1)
+                child_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth-1)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
-                left_child = self._generator_helper(self.grammar.rule(terms[0]), max_depth-1)
-                curr_rule = self.grammar.rule(terms[1])
+                left_child = self._generator_helper(self.grammar.rule(terms[0].value), max_depth-1)
+                curr_rule = self.grammar.rule(terms[1].value)
                 expansion:FuncExpr = curr_rule.at(self._random_exp_from_rule(curr_rule))
                 curr_node = expansion.to_node()
-                right_child = self._generator_helper(self.grammar.rule(terms[2]), max_depth-1)
+                right_child = self._generator_helper(self.grammar.rule(terms[2].value), max_depth-1)
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
                 return curr_node
@@ -438,7 +492,7 @@ class GrowIndGenerator(IndividualGenerator):
         
         else:
             #There is only one value inside the current expansion, that is, a rule
-            curr_rule = self.grammar.rule(curr_exp.terms)
+            curr_rule = self.grammar.rule(curr_exp.terms.value)
             expansion = curr_rule.at(self._random_exp_from_rule(curr_rule))
             return expansion.to_node()
     

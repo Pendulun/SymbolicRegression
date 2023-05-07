@@ -1,5 +1,5 @@
 from unittest import main, TestCase
-from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr
+from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
 from grammar import ExpansionListIndGenerator, GrowIndGenerator
 from grammar import ConstNode, VarNode, UnOPNode, BinOPNode, Individual
 import math
@@ -8,16 +8,21 @@ class TestGrammar(TestCase):
 
     def setUp(self):
         non_terminal_rules = [
-            Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
-                          Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))]),
-            Rule('term', [StrExp('var'), StrExp('const')]),
-            Rule('binop', [BinFuncExpr(lambda a,b: a+b, '+'), BinFuncExpr(lambda a,b: a-b, '-')]),
-            Rule('unop', [UnFuncExpr(lambda a:a**2, 'squared'), UnFuncExpr(lambda a:math.sqrt(a), 'sqrt')])
+            Rule('expr', [Expansion((Term('term'),Term('binop'),Term('term'))), 
+                          Expansion((Term('unop'), Term('term'))),
+                          Expansion((Term('expr'),Term('binop'),Term('expr'))),
+                          Expansion((Term('unop'), Term('expr')))]),
+            Rule('term', [StrExp(Term('var')), StrExp(Term('const'))]),
+            Rule('binop', [BinFuncExpr(FuncTerm("+",lambda a,b: a+b)),
+                           BinFuncExpr(FuncTerm('-', lambda a,b: a-b))]),
+            Rule('unop', [UnFuncExpr(FuncTerm('squared', lambda a:a**2)),
+                          UnFuncExpr(FuncTerm('sqrt', lambda a:math.sqrt(a)))])
         ]
 
         terminal_rules = [
-            Rule('var', [VarExpr('X1'), VarExpr('X2'), VarExpr('X3')]),
-            Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)])
+            Rule('var', [VarExpr(Term('X1')), VarExpr(Term('X2')), VarExpr(Term('X3'))]),
+            Rule('const', [NumericExp(Term(1)), NumericExp(Term(2)),
+                           NumericExp(Term(3)), NumericExp(Term(4))])
         ]
         self.grammar = Grammar()
         for rule in non_terminal_rules:
@@ -29,7 +34,7 @@ class TestGrammar(TestCase):
         self.grammar.starting_rule = 'expr'
 
     def test_can_get_rule(self):
-        expected_terms = [StrExp('X1'), StrExp('X2'), StrExp('X3')]
+        expected_terms = [StrExp(Term('X1')), StrExp(Term('X2')), StrExp(Term('X3'))]
         self.assertEqual(self.grammar.rule('var').expansions, expected_terms)
     
     def test_can_print_grammar(self):
@@ -43,8 +48,11 @@ class TestGrammar(TestCase):
     
     def test_can_set_starting_rule(self):
         self.grammar.starting_rule = 'expr'
-        expected_rule = Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
-                                      Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))])
+        expected_rule = Rule('expr', [Expansion((Term('term'),Term('binop'),Term('term'))), 
+                          Expansion((Term('unop'), Term('term'))),
+                          Expansion((Term('expr'),Term('binop'),Term('expr'))),
+                          Expansion((Term('unop'), Term('expr')))])
+        
         self.assertEqual(self.grammar.starting_rule, expected_rule)
     
     def test_can_expand_given_expansion_idxs_with_binop(self):
@@ -74,16 +82,21 @@ class TestGrammar(TestCase):
 class TestIndividualGenerator(TestCase):
     def setUp(self):
         non_terminal_rules = [
-            Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
-                          Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))]),
-            Rule('term', [StrExp('var'), StrExp('const')]),
-            Rule('binop', [BinFuncExpr(lambda a,b: a+b, '+'), BinFuncExpr(lambda a,b: a-b, '-')]),
-            Rule('unop', [UnFuncExpr(lambda a:a**2, 'squared'), UnFuncExpr(lambda a:math.sqrt(a), 'sqrt')])
+            Rule('expr', [Expansion((Term('term'),Term('binop'),Term('term'))), 
+                          Expansion((Term('unop'), Term('term'))),
+                          Expansion((Term('expr'),Term('binop'),Term('expr'))),
+                          Expansion((Term('unop'), Term('expr')))]),
+            Rule('term', [StrExp(Term('var')), StrExp(Term('const'))]),
+            Rule('binop', [BinFuncExpr(FuncTerm("+",lambda a,b: a+b)),
+                           BinFuncExpr(FuncTerm('-', lambda a,b: a-b))]),
+            Rule('unop', [UnFuncExpr(FuncTerm('squared', lambda a:a**2)),
+                          UnFuncExpr(FuncTerm('sqrt', lambda a:math.sqrt(a)))])
         ]
 
         terminal_rules = [
-            Rule('var', [VarExpr('X1'), VarExpr('X2'), VarExpr('X3')]),
-            Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)]),
+            Rule('var', [VarExpr(Term('X1')), VarExpr(Term('X2')), VarExpr(Term('X3'))]),
+            Rule('const', [NumericExp(Term(1)), NumericExp(Term(2)), 
+                           NumericExp(Term(3)), NumericExp(Term(4))])
         ]
         self.grammar = Grammar()
         for rule in non_terminal_rules:
