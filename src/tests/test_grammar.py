@@ -1,5 +1,5 @@
 from unittest import main, TestCase
-from grammar import Grammar, Rule, Expansion, NumericExp, StrExp, FuncExpr
+from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr
 from grammar import ExpansionListIndGenerator, GrowIndGenerator
 from grammar import ConstNode, VarNode, UnOPNode, BinOPNode, Individual
 import math
@@ -11,12 +11,12 @@ class TestGrammar(TestCase):
             Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
                           Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))]),
             Rule('term', [StrExp('var'), StrExp('const')]),
-            Rule('binop', [FuncExpr(lambda a,b: a+b, '+'), FuncExpr(lambda a,b: a-b, '-')]),
-            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
+            Rule('binop', [BinFuncExpr(lambda a,b: a+b, '+'), BinFuncExpr(lambda a,b: a-b, '-')]),
+            Rule('unop', [UnFuncExpr(lambda a:a**2, 'squared'), UnFuncExpr(lambda a:math.sqrt(a), 'sqrt')])
         ]
 
         terminal_rules = [
-            Rule('var', [StrExp('X1'), StrExp('X2'), StrExp('X3')]),
+            Rule('var', [VarExpr('X1'), VarExpr('X2'), VarExpr('X3')]),
             Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)])
         ]
         self.grammar = Grammar()
@@ -77,12 +77,12 @@ class TestIndividualGenerator(TestCase):
             Rule('expr', [Expansion(('term','binop','term')), Expansion(('unop', 'term')),
                           Expansion(('expr','binop','expr')), Expansion(('unop', 'expr'))]),
             Rule('term', [StrExp('var'), StrExp('const')]),
-            Rule('binop', [FuncExpr(lambda a,b: a+b, '+'), FuncExpr(lambda a,b: a-b, '-')]),
-            Rule('unop', [FuncExpr(lambda a:a**2, 'squared'), FuncExpr(lambda a:math.sqrt(a), 'sqrt')])
+            Rule('binop', [BinFuncExpr(lambda a,b: a+b, '+'), BinFuncExpr(lambda a,b: a-b, '-')]),
+            Rule('unop', [UnFuncExpr(lambda a:a**2, 'squared'), UnFuncExpr(lambda a:math.sqrt(a), 'sqrt')])
         ]
 
         terminal_rules = [
-            Rule('var', [StrExp('X1'), StrExp('X2'), StrExp('X3')]),
+            Rule('var', [VarExpr('X1'), VarExpr('X2'), VarExpr('X3')]),
             Rule('const', [NumericExp(1), NumericExp(2), NumericExp(3), NumericExp(4)]),
         ]
         self.grammar = Grammar()
@@ -127,6 +127,7 @@ class TestIndividual(TestCase):
         self.assertEqual(parent_node.evaluate(), 3.5**2)
     
     def test_can_evaluate_binop_node(self):
+        #3.5 sum abs(-4)
         parent_node = BinOPNode('sum', lambda a, b: a+b)
         left_child_node = ConstNode(3.5)
         parent_node.add_child(left_child_node)
