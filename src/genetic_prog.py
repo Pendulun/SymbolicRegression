@@ -1,6 +1,7 @@
 from grammar import Grammar, Individual
 from abc import ABC, abstractmethod
 from ind_generator import IndividualGenerator, Individual
+import statistics
 import numpy as np
 import random
 from typing import Callable, Any, List, Union
@@ -113,3 +114,79 @@ class TournamentSelection(SelectionFromData):
             selected.append(individuals[max_fitness_ind_idx])
         
         return selected
+
+class LexicaseSelection(SelectionFromData):
+    def select(self, individuals: List[Individual], data: List[dict], 
+               target: Union[str, int, float], fitness_func: Callable[..., Any], 
+               k: int = 1, n: int = 1, better_fitness:str='greater') -> List[Individual]:
+        """
+        This returns n individuals.
+        individuals: individuals list
+        data: A list of dicts. Example: [{'X1':1, 'X2':2, ..., 'Y':5}, {'X1':2, 'X2':4, ..., 'Y':7}]
+        target: The target key for every instance in data. Example: 'Y'
+        fitness_func: A callable that must receive the individual evaluation on a data instance and the target value
+                        and return the fitness value. Ignored for this selection type
+        k: The sample size for every selection. Ignored for this selection type
+        n: The number of selections to do.
+        better_fitness: The logic for the better fitness. Must be one of ['greater','lower']. That is,
+            if 'greater' then greater fitness equal better fitness and the equivalent for 'lower'. Ignored for this selection type.
+        """
+        selected_individuals = list()
+
+        for _ in range(n):
+            data_samples = random.sample(data, k=len(data))
+            good_ind_idxs = range(len(individuals))
+            
+            for sample in data_samples:
+                ind_fitnesses:np.array = self._evaluate_individuals(individuals, target, good_ind_idxs, sample)
+
+                good_ind_idxs = self.select_good_enough_inds_idxs(good_ind_idxs, ind_fitnesses)
+
+                if len(good_ind_idxs) == 1:
+                    #Filtered enough individuals
+                    break
+            
+            n_good_inds_last_run = len(good_ind_idxs)
+            if n_good_inds_last_run > 1:
+                good_ind_idxs = self.choose_a_ind(good_ind_idxs, n_good_inds_last_run)
+            
+            selected_ind_idx = good_ind_idxs[0]
+            selected_individuals.append(individuals[selected_ind_idx])
+
+        return selected_individuals
+
+    def choose_a_ind(self, good_ind_idxs:list, n_good_inds_last_run:int) -> list:
+        random_idx = random.randint(0, n_good_inds_last_run-1)
+        #List of one element
+        good_ind_idxs = [good_ind_idxs[random_idx]]
+        return good_ind_idxs
+
+    def select_good_enough_inds_idxs(self, run_inds_idxs:list, ind_fitnesses:np.array) -> list:
+        mad = self.calculate_mad(ind_fitnesses)
+        next_run_ind_idxs = list()
+        best_fitness = ind_fitnesses.min()
+
+        next_run_ind_idxs = [run_inds_idxs[ind_idx]
+                                        for ind_idx, ind_fitness in enumerate(ind_fitnesses)
+                                        if self.good_enough(ind_fitness, best_fitness, mad)]
+        run_inds_idxs = next_run_ind_idxs
+        return run_inds_idxs
+
+    def good_enough(self, ind_fitness, best_fitness, mad) -> bool:
+        return ind_fitness < best_fitness + mad
+
+    def calculate_mad(self, ind_fitnesses:np.array):
+        error_median = statistics.median(ind_fitnesses)
+        mad = statistics.median(np.abs(ind_fitnesses - error_median))
+        return mad
+
+
+    def _evaluate_individuals(self, individuals:List[Individual], target:str, run_inds_idxs:List, sample:dict) -> np.array:
+        ind_fitnesses:np.array = np.zeros(len(run_inds_idxs))
+        for considered_ind_idx, real_ind_idx in enumerate(run_inds_idxs):
+            individual = individuals[real_ind_idx]
+            predicted = individual.evaluate(sample)
+            error = abs(sample[target] - predicted)
+            ind_fitnesses[considered_ind_idx] = error
+        
+        return ind_fitnesses

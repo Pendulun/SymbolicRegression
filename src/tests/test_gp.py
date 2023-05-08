@@ -1,7 +1,7 @@
 from unittest import TestCase, main
 from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
 from grammar import GrowIndGenerator
-from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection
+from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection, LexicaseSelection
 import math
 import numpy as np
 
@@ -93,7 +93,52 @@ class TestGrammarGP(TestCase):
                                                  fitness_func=lambda a, b: math.sqrt((a-b)**2), 
                                                  k=2, n=1, better_fitness='lower')[0]
         self.assertIn(selected_ind, grammar_gp.individuals)
-
+    
+    def test_can_calculate_mad(self):
+        lexicase_sel = LexicaseSelection()
+        ordered_ind_fitnesses = np.array([1, 2, 3, 4, 5, 6, 7])
+        median_fit = ordered_ind_fitnesses[len(ordered_ind_fitnesses)//2]
+        diff = [val - median_fit for val in ordered_ind_fitnesses]
+        abs_diff = [abs(val) for val in diff]
+        abs_diff.sort()
+        abs_diff_median = abs_diff[len(abs_diff)//2]
+        self.assertEqual(lexicase_sel.calculate_mad(ordered_ind_fitnesses), abs_diff_median)
+    
+    def test_lexicase_sel_is_good_enough(self):
+        lexicase_sel = LexicaseSelection()
+        ind_fitness = 4.5
+        best_fitness = 4
+        mad = 1
+        self.assertTrue(lexicase_sel.good_enough(ind_fitness, best_fitness, mad))
+    
+    def test_lexicase_sel_is_not_good_enough(self):
+        lexicase_sel = LexicaseSelection()
+        ind_fitness = 5
+        best_fitness = 4
+        mad = 1
+        self.assertFalse(lexicase_sel.good_enough(ind_fitness, best_fitness, mad))
+    
+    def test_lexicase_selection(self):
+        selection_mode = LexicaseSelection()
+        grammar = self.get_grammar()
+        ind_generator = GrowIndGenerator(grammar)
+        n_individuals = 10
+        max_depth = 4
+        grammar_gp = GrammarGP(ind_generator, grammar)
+        grammar_gp.generate_pop(n_individuals, max_depth)
+        data=[{'X1':3, 'X2':4, 'X3':2, 'Y':9}]
+        selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
+                                                 data=data, 
+                                                 target='Y',
+                                                 fitness_func=None,
+                                                 n=1)[0]
+        self.assertIn(selected_ind, grammar_gp.individuals)
+        selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
+                                                 data=data, 
+                                                 target='Y',
+                                                 fitness_func=None,
+                                                 n=1)[0]
+        self.assertIn(selected_ind, grammar_gp.individuals)
 
 if __name__ == "__main__":
     main()
