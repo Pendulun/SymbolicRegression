@@ -66,10 +66,11 @@ class TestGrammarGP(TestCase):
         self.assertIn(selected_ind, grammar_gp.individuals)
     
     def test_invert_fitness_highest_to_lowest(self):
-        fitness_values = np.array([0, 1, 2, 3, 4, 5])
-        expected_values = [5, 4, 3, 2, 1, 0]
+        fitness_values = np.array([0, 0.2, 0.4, 0.6, 0.8, 1])
+        expected_values = [1, 0.933, 0.8666, 0.80, 0.733, 0.6666]
         new_fitnesses = SelectionFromData.transform_highest_to_lowest(fitness_values)
-        self.assertEqual(list(new_fitnesses), expected_values)
+        for value1, value2 in zip(list(new_fitnesses), expected_values):
+            self.assertAlmostEqual(value1, value2, 3)
     
     def test_tournament_selection(self):
         selection_mode = TournamentSelection()

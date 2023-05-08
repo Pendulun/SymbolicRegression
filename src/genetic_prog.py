@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from ind_generator import IndividualGenerator, Individual
 import numpy as np
 import random
-from typing import Callable, Any
+from typing import Callable, Any, List, Union
 
 
 class GP(ABC):
@@ -36,25 +36,21 @@ class SelectionFromData(ABC):
     
     @staticmethod
     @abstractmethod
-    def select(individuals:list[Individual], data:list[dict], 
-               target:str|int|float, fitness_func:Callable, k:int=1, n:int=1, better_fitness:str='greater') -> list[Individual]:
+    def select(individuals:List[Individual], data:List[dict], 
+               target:Union[str,int,float], fitness_func:Callable, k:int=1, n:int=1, better_fitness:str='greater') -> List[Individual]:
         pass
 
     @staticmethod
     def transform_highest_to_lowest(original_fitnesses:np.array) -> np.array:
-        max_fit = original_fitnesses.max()
-        min_fit = original_fitnesses.min()
-        new_fitness = np.zeros(len(original_fitnesses))
-        for fit_idx, fitness in enumerate(original_fitnesses):
-            distance_to_max_fit = max_fit - fitness
-            new_fitness[fit_idx] = min_fit + distance_to_max_fit
-        
-        return new_fitness
+        """
+        Does this: original=[0, 0.2, 0.4, 0.6, 0.8, 1], transformed=[1, 0.933, 0.8666, 0.80, 0.733, 0.6666]
+        """
+        return 1 -(original_fitnesses/original_fitnesses.sum())
 
 class RoulleteSelection(SelectionFromData):
     @staticmethod
-    def select(individuals:list[Individual], data:list[dict], 
-               target:str|int|float, fitness_func: Callable, k:int=1, n:int=1, better_fitness:str='greater') -> list[Individual]:
+    def select(individuals:List[Individual], data:List[dict], 
+               target:Union[str, int, float], fitness_func: Callable, k:int=1, n:int=1, better_fitness:str='greater') -> List[Individual]:
         """
         This returns n individuals.
         individuals: individuals list
@@ -81,9 +77,9 @@ class RoulleteSelection(SelectionFromData):
         return selected
 
 class TournamentSelection(SelectionFromData):
-    def select(self, individuals: list[Individual], data: list[dict], 
-               target: str | int | float, fitness_func: Callable[..., Any], 
-               k: int = 1, n: int = 1, better_fitness:str='greater') -> list[Individual]:
+    def select(self, individuals: List[Individual], data: List[dict], 
+               target: Union[str, int, float], fitness_func: Callable[..., Any], 
+               k: int = 1, n: int = 1, better_fitness:str='greater') -> List[Individual]:
         """
         This returns n individuals.
         individuals: individuals list
