@@ -148,20 +148,10 @@ class LexicaseSelection(SelectionFromData):
                     #Filtered enough individuals
                     break
             
-            n_good_inds_last_run = len(good_ind_idxs)
-            if n_good_inds_last_run > 1:
-                good_ind_idxs = self.choose_a_ind(good_ind_idxs, n_good_inds_last_run)
-            
-            selected_ind_idx = good_ind_idxs[0]
+            selected_ind_idx = random.choice(good_ind_idxs)
             selected_individuals.append(copy.deepcopy(individuals[selected_ind_idx]))
 
         return selected_individuals
-
-    def choose_a_ind(self, good_ind_idxs:list, n_good_inds_last_run:int) -> list:
-        random_idx = random.randint(0, n_good_inds_last_run-1)
-        #List of one element
-        good_ind_idxs = [good_ind_idxs[random_idx]]
-        return good_ind_idxs
 
     def select_good_enough_inds_idxs(self, run_inds_idxs:list, ind_fitnesses:np.array) -> list:
         mad = self.calculate_mad(ind_fitnesses)
