@@ -1,5 +1,6 @@
 from grammar import Grammar, Individual
 from abc import ABC, abstractmethod
+import copy
 from ind_generator import IndividualGenerator, Individual
 import statistics
 import numpy as np
@@ -73,9 +74,11 @@ class RoulleteSelection(SelectionFromData):
         if better_fitness == 'lower':
             ind_fitness = RoulleteSelection.transform_highest_to_lowest(ind_fitness)
         
-        selected = [random.choices(population=individuals, weights=ind_fitness, k=1)[0] for _ in range(n)]
+        ind_idxs = range(len(individuals))
+        selected_idxs = [random.choices(population=ind_idxs, weights=ind_fitness, k=1)[0] for _ in range(n)]
+        selected_individuals = [copy.deepcopy(individuals[idx]) for idx in selected_idxs]
 
-        return selected
+        return selected_individuals
 
 class TournamentSelection(SelectionFromData):
     def select(self, individuals: List[Individual], data: List[dict], 
@@ -111,7 +114,7 @@ class TournamentSelection(SelectionFromData):
             selected_fitnesses = ind_fitness[selected_idxs]
             max_fitness_idx = np.argmax(selected_fitnesses)
             max_fitness_ind_idx = selected_idxs[max_fitness_idx]
-            selected.append(individuals[max_fitness_ind_idx])
+            selected.append(copy.deepcopy(individuals[max_fitness_ind_idx]))
         
         return selected
 
@@ -151,7 +154,7 @@ class LexicaseSelection(SelectionFromData):
                 good_ind_idxs = self.choose_a_ind(good_ind_idxs, n_good_inds_last_run)
             
             selected_ind_idx = good_ind_idxs[0]
-            selected_individuals.append(individuals[selected_ind_idx])
+            selected_individuals.append(copy.deepcopy(individuals[selected_ind_idx]))
 
         return selected_individuals
 

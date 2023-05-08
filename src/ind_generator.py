@@ -62,6 +62,12 @@ class Node():
     def value(self, new_value):
         self._value = new_value
     
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Node):
+            return False
+        
+        return self.value == other.value and self._childs == other._childs
+    
     def __str__(self):
         my_str = str(self._value)
         for child in self._childs:

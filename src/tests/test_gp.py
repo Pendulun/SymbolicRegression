@@ -57,13 +57,13 @@ class TestGrammarGP(TestCase):
                                                  target='Y',
                                                  fitness_func=lambda a, b: math.sqrt((a-b)**2), 
                                                  k=1, n=1)[0]
-        self.assertIn(selected_ind, grammar_gp.individuals)
+        self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
         selected_ind = roullete_selection.select(individuals=grammar_gp.individuals,
                                                  data=data, 
                                                  target='Y',
                                                  fitness_func=lambda a, b: math.sqrt((a-b)**2), 
                                                  k=1, n=1, better_fitness='lower')[0]
-        self.assertIn(selected_ind, grammar_gp.individuals)
+        self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
     
     def test_invert_fitness_highest_to_lowest(self):
         fitness_values = np.array([0, 0.2, 0.4, 0.6, 0.8, 1])
@@ -86,13 +86,13 @@ class TestGrammarGP(TestCase):
                                                  target='Y',
                                                  fitness_func=lambda a, b: math.sqrt((a-b)**2), 
                                                  k=1, n=1)[0]
-        self.assertIn(selected_ind, grammar_gp.individuals)
+        self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
         selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
                                                  data=data, 
                                                  target='Y',
                                                  fitness_func=lambda a, b: math.sqrt((a-b)**2), 
                                                  k=2, n=1, better_fitness='lower')[0]
-        self.assertIn(selected_ind, grammar_gp.individuals)
+        self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
     
     def test_can_calculate_mad(self):
         lexicase_sel = LexicaseSelection()
@@ -132,13 +132,13 @@ class TestGrammarGP(TestCase):
                                                  target='Y',
                                                  fitness_func=None,
                                                  n=1)[0]
-        self.assertIn(selected_ind, grammar_gp.individuals)
+        self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
         selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
                                                  data=data, 
                                                  target='Y',
                                                  fitness_func=None,
                                                  n=1)[0]
-        self.assertIn(selected_ind, grammar_gp.individuals)
+        self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
 
 if __name__ == "__main__":
     main()
