@@ -1,7 +1,7 @@
 from unittest import TestCase, main
 from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
 from grammar import GrowIndGenerator
-from genetic_prog import GrammarGP
+from genetic_prog import GrammarGP, RoulleteSelection
 import math
 
 class TestGrammarGP(TestCase):
@@ -15,8 +15,7 @@ class TestGrammarGP(TestCase):
             Rule('term', [StrExp(Term('var')), StrExp(Term('const'))]),
             Rule('binop', [BinFuncExpr(FuncTerm("+",lambda a,b: a+b)),
                            BinFuncExpr(FuncTerm('-', lambda a,b: a-b))]),
-            Rule('unop', [UnFuncExpr(FuncTerm('squared', lambda a:a**2)),
-                          UnFuncExpr(FuncTerm('sqrt', lambda a:math.sqrt(a)))])
+            Rule('unop', [UnFuncExpr(FuncTerm('squared', lambda a:a**2))])
         ]
 
         terminal_rules = [
@@ -42,6 +41,23 @@ class TestGrammarGP(TestCase):
         grammar_gp = GrammarGP(ind_generator, grammar)
         grammar_gp.generate_pop(n_individuals, max_depth)
         self.assertEqual(grammar_gp.n_ind, n_individuals)
+    
+    def test_roullete_selection(self):
+        roullete_selection = RoulleteSelection()
+        grammar = self.get_grammar()
+        ind_generator = GrowIndGenerator(grammar)
+        n_individuals = 10
+        max_depth = 4
+        grammar_gp = GrammarGP(ind_generator, grammar)
+        grammar_gp.generate_pop(n_individuals, max_depth)
+        data=[{'X1':3, 'X2':4, 'X3':2, 'Y':9}]
+        selected_ind = roullete_selection.select(individuals=grammar_gp.individuals,
+                                                 data=data, 
+                                                 target='Y',
+                                                 fitness_func=lambda a, b: math.sqrt((a-b)**2), 
+                                                 k=1, n=1)[0]
+        self.assertIn(selected_ind, grammar_gp.individuals)
+
 
 if __name__ == "__main__":
     main()
