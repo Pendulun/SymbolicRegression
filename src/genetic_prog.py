@@ -74,11 +74,10 @@ class RoulleteSelection(SelectionFromData):
         if better_fitness == 'lower':
             ind_fitness = RoulleteSelection.transform_highest_to_lowest(ind_fitness)
         
-        ind_idxs = range(len(individuals))
-        selected_idxs = [random.choices(population=ind_idxs, weights=ind_fitness, k=1)[0] for _ in range(n)]
-        selected_individuals = [copy.deepcopy(individuals[idx]) for idx in selected_idxs]
+        selected_inds = random.choices(population=individuals, weights=ind_fitness, k=n)
+        selected_inds = [copy.deepcopy(ind) for ind in selected_inds]
 
-        return selected_individuals
+        return selected_inds
 
 class TournamentSelection(SelectionFromData):
     def select(self, individuals: List[Individual], data: List[dict], 
