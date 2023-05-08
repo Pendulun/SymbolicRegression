@@ -1,7 +1,7 @@
 from unittest import TestCase, main
 from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
 from grammar import GrowIndGenerator
-from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection, LexicaseSelection
+from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection, LexicaseSelection, MutationOP
 import math
 import numpy as np
 
@@ -139,6 +139,18 @@ class TestGrammarGP(TestCase):
                                                  fitness_func=None,
                                                  n=1)[0]
         self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
+    
+    def test_mutation_operator(self):
+        grammar = self.get_grammar()
+        ind_generator = GrowIndGenerator(grammar)
+        grammar_gp = GrammarGP(ind_generator, grammar)
+        n_individuals = 1
+        max_depth = 4
+        grammar_gp.generate_pop(n_individuals, max_depth)
+        original_ind = grammar_gp.individuals[0]
+        new_ind = MutationOP.mutate(original_ind, grammar)
+        self.assertFalse(str(original_ind) == str(new_ind))
+
 
 if __name__ == "__main__":
     main()

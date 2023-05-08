@@ -306,8 +306,8 @@ class FuncTerm(NonTerminalTerm):
         return str(self.value)
 
 class OPNode(Node):
-    def __init__(self, value, func:Callable):
-        super().__init__(value)
+    def __init__(self, value, func:Callable, selection_prob:float=1):
+        super().__init__(value, selection_prob)
         self._func = func
     
     @property
@@ -319,8 +319,8 @@ class OPNode(Node):
         raise AttributeError(f"Func is not subscriptable for {self.__class__.__name__}!")
 
 class BinOPNode(OPNode):
-    def __init__(self, value, func:Callable):
-        super().__init__(value, func)
+    def __init__(self, value, func:Callable, selection_prob:float=1):
+        super().__init__(value, func, selection_prob)
 
     def evaluate(self, *args):
         return self.func(self._childs[0].evaluate(*args), self._childs[1].evaluate(*args))
@@ -332,8 +332,8 @@ class BinOPNode(OPNode):
         return my_str
 
 class UnOPNode(OPNode):
-    def __init__(self, value, func:Callable):
-        super().__init__(value, func)
+    def __init__(self, value, func:Callable, selection_prob:float=1):
+        super().__init__(value, func, selection_prob)
     
     def evaluate(self, *args):
         return self.func(self._childs[0].evaluate(*args))
@@ -344,8 +344,8 @@ class UnOPNode(OPNode):
         return my_str
 
 class VarNode(Node):
-    def __init__(self, value):
-        super().__init__(value)
+    def __init__(self, value, selection_prob:float=1):
+        super().__init__(value, selection_prob)
     
     def add_child(self, new_child: Node):
         raise NotImplementedError("I'm a VarNode, I don't have children!")
@@ -358,8 +358,8 @@ class VarNode(Node):
         return self.value
 
 class ConstNode(Node):
-    def __init__(self, value:None):
-        super().__init__(value)
+    def __init__(self, value:None, selection_prob:float=1):
+        super().__init__(value, selection_prob)
     
     def add_child(self, new_child: Node):
         raise NotImplementedError("I'm a ConstNode, I don't have children!")

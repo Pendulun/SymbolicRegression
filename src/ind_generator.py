@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List
+import random
 class IndividualGenerator(ABC):
     @abstractmethod
     def generate(self, *args) -> Individual:
@@ -11,12 +12,33 @@ class Individual():
         self._root = root_node
         self._depth = None
 
+        self._define_nodes_depth()
+    
+    def _define_nodes_depth_helper(self):
+        pass
+
+    def _define_nodes_depth(self):
+        self._define_nodes_depth_helper
+
+
     def evaluate(self, data = None):
         return self._root.evaluate(data)
+    
+    def random_node(self) -> Node:
+        while True:
+            node_stack:List[Node] = list()
+            node_stack.append(self.root)
+            while len(node_stack) > 0:
+                curr_node = node_stack.pop()
+                if random.random() <= curr_node.selection_prob:
+                    return curr_node
+                else:
+                    for child in curr_node.childs:
+                        node_stack.append(child)
 
     @property
     def depth(self) -> int:
-        return self._root.depth
+        return self._root.heigth
     
     @property
     def root(self) -> Node:
@@ -32,10 +54,12 @@ class Individual():
         return self._root == other.root
 
 class Node():
-    def __init__(self, value = None):
+    def __init__(self, value = None, selection_prob:float = 1):
         self._value = value
         self._childs:List[Node] = list()
+        self._heigth = None
         self._depth = None
+        self.selection_prob = selection_prob
     
     def add_child(self, new_child:Node):
         self._childs.append(new_child)
@@ -44,15 +68,15 @@ class Node():
         raise NotImplementedError(f"evaluate not implemented for {self.__class__.__name__} class!")
 
     @property
-    def depth(self) -> int:
-        if self._depth == None:
-            childs_depths = [child.depth for child in self._childs]
+    def heigth(self) -> int:
+        if self._heigth == None:
+            childs_depths = [child.heigth for child in self._childs]
             if len(childs_depths) > 0:
-                self._depth =  max(childs_depths)+1
+                self._heigth =  max(childs_depths)+1
             else:
-                self._depth = 1
+                self._heigth = 1
 
-        return self._depth
+        return self._heigth
     
     @property
     def value(self):
@@ -61,6 +85,10 @@ class Node():
     @value.setter
     def value(self, new_value):
         self._value = new_value
+    
+    @property
+    def childs(self) -> List[Node]:
+        return self._childs
     
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Node):

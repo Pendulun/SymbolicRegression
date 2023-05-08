@@ -182,3 +182,9 @@ class LexicaseSelection(SelectionFromData):
             ind_fitnesses[considered_ind_idx] = error
         
         return ind_fitnesses
+
+class MutationOP():
+    @staticmethod
+    def mutate(individual:Individual, grammar:Grammar):
+        random_node = individual.random_node()
+        
