@@ -1,8 +1,9 @@
 from unittest import TestCase, main
 from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
 from grammar import GrowIndGenerator
-from genetic_prog import GrammarGP, RoulleteSelection
+from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection
 import math
+import numpy as np
 
 class TestGrammarGP(TestCase):
 
@@ -56,6 +57,40 @@ class TestGrammarGP(TestCase):
                                                  target='Y',
                                                  fitness_func=lambda a, b: math.sqrt((a-b)**2), 
                                                  k=1, n=1)[0]
+        self.assertIn(selected_ind, grammar_gp.individuals)
+        selected_ind = roullete_selection.select(individuals=grammar_gp.individuals,
+                                                 data=data, 
+                                                 target='Y',
+                                                 fitness_func=lambda a, b: math.sqrt((a-b)**2), 
+                                                 k=1, n=1, better_fitness='lower')[0]
+        self.assertIn(selected_ind, grammar_gp.individuals)
+    
+    def test_invert_fitness_highest_to_lowest(self):
+        fitness_values = np.array([0, 1, 2, 3, 4, 5])
+        expected_values = [5, 4, 3, 2, 1, 0]
+        new_fitnesses = SelectionFromData.transform_highest_to_lowest(fitness_values)
+        self.assertEqual(list(new_fitnesses), expected_values)
+    
+    def test_tournament_selection(self):
+        selection_mode = TournamentSelection()
+        grammar = self.get_grammar()
+        ind_generator = GrowIndGenerator(grammar)
+        n_individuals = 10
+        max_depth = 4
+        grammar_gp = GrammarGP(ind_generator, grammar)
+        grammar_gp.generate_pop(n_individuals, max_depth)
+        data=[{'X1':3, 'X2':4, 'X3':2, 'Y':9}]
+        selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
+                                                 data=data, 
+                                                 target='Y',
+                                                 fitness_func=lambda a, b: math.sqrt((a-b)**2), 
+                                                 k=1, n=1)[0]
+        self.assertIn(selected_ind, grammar_gp.individuals)
+        selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
+                                                 data=data, 
+                                                 target='Y',
+                                                 fitness_func=lambda a, b: math.sqrt((a-b)**2), 
+                                                 k=2, n=1, better_fitness='lower')[0]
         self.assertIn(selected_ind, grammar_gp.individuals)
 
 
