@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ind_generator import IndividualGenerator
 from typing import List, Tuple, Callable, Any
 import random
 
@@ -433,7 +434,7 @@ class ConstNode(Node):
     def __str__(self):
         return str(self.value)
 
-class IndividualGenerator():
+class GrammarIndividualGenerator(IndividualGenerator):
     def __init__(self, grammar:Grammar):
         self._grammar = grammar
     
@@ -448,7 +449,7 @@ class IndividualGenerator():
     def grammar(self, new_grammar:Grammar):
         raise AttributeError("grammar is not subscriptable!")
 
-class ExpansionListIndGenerator(IndividualGenerator):
+class ExpansionListIndGenerator(GrammarIndividualGenerator):
     def generate(self, expansion_idxs: list[int]) -> Individual:
         starting_rule = self.grammar.starting_rule
         return Individual(self._generator_helper(starting_rule, list(expansion_idxs)))
@@ -460,14 +461,14 @@ class ExpansionListIndGenerator(IndividualGenerator):
             terms = list(curr_exp.terms)
 
             if len(terms) == 2:
-                expansion:UnFuncExpr = self.grammar.rule(terms[0].value).at(expansions_idx.pop(0))
+                expansion = self.grammar.rule(terms[0].value).at(expansions_idx.pop(0))
                 curr_node = expansion.to_node()
                 child_node = self._generator_helper(self.grammar.rule(terms[1].value), expansions_idx)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
                 left_child = self._generator_helper(self.grammar.rule(terms[0].value), expansions_idx)
-                expansion:BinFuncExpr = self.grammar.rule(terms[1].value).at(expansions_idx.pop(0))
+                expansion = self.grammar.rule(terms[1].value).at(expansions_idx.pop(0))
                 curr_node = expansion.to_node()
                 right_child = self._generator_helper(self.grammar.rule(terms[2].value), expansions_idx)
                 curr_node.add_child(left_child)
@@ -481,7 +482,7 @@ class ExpansionListIndGenerator(IndividualGenerator):
             expansion = self.grammar.rule(curr_exp.terms.value).at(expansions_idx.pop(0))
             return expansion.to_node()
 
-class GrowIndGenerator(IndividualGenerator):
+class GrowIndGenerator(GrammarIndividualGenerator):
     def generate(self, max_depth:int) -> Individual:
         starting_rule = self.grammar.starting_rule
         return Individual(self._generator_helper(starting_rule, max_depth))
@@ -500,7 +501,7 @@ class GrowIndGenerator(IndividualGenerator):
 
             if len(terms) == 2:
                 curr_rule = self.grammar.rule(terms[0].value)
-                expansion:FuncExpr = curr_rule.at(self._random_exp_from_rule(curr_rule))
+                expansion = curr_rule.at(self._random_exp_from_rule(curr_rule))
                 curr_node = expansion.to_node()
                 child_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth-1)
                 curr_node.add_child(child_node)
@@ -508,7 +509,7 @@ class GrowIndGenerator(IndividualGenerator):
             elif len(terms) == 3:
                 left_child = self._generator_helper(self.grammar.rule(terms[0].value), max_depth-1)
                 curr_rule = self.grammar.rule(terms[1].value)
-                expansion:FuncExpr = curr_rule.at(self._random_exp_from_rule(curr_rule))
+                expansion = curr_rule.at(self._random_exp_from_rule(curr_rule))
                 curr_node = expansion.to_node()
                 right_child = self._generator_helper(self.grammar.rule(terms[2].value), max_depth-1)
                 curr_node.add_child(left_child)
