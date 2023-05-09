@@ -2,9 +2,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List
 import random
-class IndividualGenerator(ABC):
+class TreeGenerator(ABC):
     @abstractmethod
-    def generate(self, *args) -> Individual:
+    def generate(self, *args) -> Node:
         pass
 
 class Individual():
@@ -54,12 +54,13 @@ class Individual():
         return self._root == other.root
 
 class Node():
-    def __init__(self, value = None, selection_prob:float = 1):
+    def __init__(self, value = None, selection_prob:float = 1, parent_rule_name:str=None):
         self._value = value
         self._childs:List[Node] = list()
         self._heigth = None
         self._depth = None
         self.selection_prob = selection_prob
+        self._parent_rule_name = parent_rule_name
     
     def add_child(self, new_child:Node):
         self._childs.append(new_child)
@@ -89,6 +90,10 @@ class Node():
     @property
     def childs(self) -> List[Node]:
         return self._childs
+    
+    @property
+    def parent_rule(self)->str:
+        return self._parent_rule_name
     
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Node):

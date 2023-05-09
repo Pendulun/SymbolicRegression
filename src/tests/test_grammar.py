@@ -1,6 +1,6 @@
 from unittest import main, TestCase
 from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
-from grammar import ExpansionListIndGenerator, GrowIndGenerator
+from grammar import ExpansionListTreeGenerator, GrowTreeGenerator
 from grammar import ConstNode, VarNode, UnOPNode, BinOPNode, Individual
 import math
 
@@ -108,18 +108,18 @@ class TestIndividualGenerator(TestCase):
         self.grammar.starting_rule = 'expr'
     
     def test_can_generate_individual_from_grammar_based_on_expansion_list(self):
-        exp_list_ind_generator = ExpansionListIndGenerator(self.grammar)
+        exp_list_ind_generator = ExpansionListTreeGenerator(self.grammar)
 
         expansion_idxs = [2, 3, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 2]
-        individual = exp_list_ind_generator.generate(expansion_idxs)
+        individual = Individual(exp_list_ind_generator.generate(expansion_idxs))
         individual_str = str(individual)
         expected_individual_str = "(squared (sqrt (X2)) + (X1 - X3))"
         self.assertEqual(individual_str, expected_individual_str)
     
     def test_can_generate_individual_grow_method(self):
-        grow_ind_generator = GrowIndGenerator(self.grammar)
+        grow_ind_generator = GrowTreeGenerator(self.grammar)
         max_depth = 4
-        individual = grow_ind_generator.generate(max_depth)
+        individual = Individual(grow_ind_generator.generate(max_depth))
         self.assertLessEqual(individual.depth, max_depth)
 
 class TestIndividual(TestCase):
