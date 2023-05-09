@@ -201,7 +201,7 @@ class VarExpr(StrExp):
     def to_node(self, parent_rule_name:str) -> Node:
         return VarNode(self.terms.value, parent_rule_name=parent_rule_name)
 
-class FuncExpr(Expansion):
+class FuncExp(Expansion):
     def __init__(self, term:FuncTerm):
         super().__init__([term])
         self._expansion_func = term.func
@@ -221,14 +221,14 @@ class FuncExpr(Expansion):
     def __str__(self):
         return self._expansion_terms[0].value
 
-class UnFuncExpr(FuncExpr):
+class UnFuncExp(FuncExp):
     def __init__(self, term:FuncTerm):
         super().__init__(term)
     
     def to_node(self, parent_rule_name:str) -> Node:
         return UnOPNode(self.terms, self.func, parent_rule_name=parent_rule_name)
 
-class BinFuncExpr(FuncExpr):
+class BinFuncExp(FuncExp):
     def __init__(self, term:FuncTerm):
         super().__init__(term)
     

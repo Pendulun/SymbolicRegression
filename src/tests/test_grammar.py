@@ -1,5 +1,5 @@
 from unittest import main, TestCase
-from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
+from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExp, UnFuncExp, StrExp, VarExpr, Term, FuncTerm
 from grammar import ExpansionListTreeGenerator, GrowTreeGenerator
 from grammar import ConstNode, VarNode, UnOPNode, BinOPNode, Individual
 import math
@@ -13,10 +13,10 @@ class TestGrammar(TestCase):
                           Expansion((Term('expr'),Term('binop'),Term('expr'))),
                           Expansion((Term('unop'), Term('expr')))]),
             Rule('term', [StrExp(Term('var')), StrExp(Term('const'))]),
-            Rule('binop', [BinFuncExpr(FuncTerm("+",lambda a,b: a+b)),
-                           BinFuncExpr(FuncTerm('-', lambda a,b: a-b))]),
-            Rule('unop', [UnFuncExpr(FuncTerm('squared', lambda a:a**2)),
-                          UnFuncExpr(FuncTerm('sqrt', lambda a:math.sqrt(a)))])
+            Rule('binop', [BinFuncExp(FuncTerm("+",lambda a,b: a+b)),
+                           BinFuncExp(FuncTerm('-', lambda a,b: a-b))]),
+            Rule('unop', [UnFuncExp(FuncTerm('squared', lambda a:a**2)),
+                          UnFuncExp(FuncTerm('sqrt', lambda a:math.sqrt(a)))])
         ]
 
         terminal_rules = [
@@ -87,10 +87,10 @@ class TestIndividualGenerator(TestCase):
                           Expansion((Term('expr'),Term('binop'),Term('expr'))),
                           Expansion((Term('unop'), Term('expr')))]),
             Rule('term', [StrExp(Term('var')), StrExp(Term('const'))]),
-            Rule('binop', [BinFuncExpr(FuncTerm("+",lambda a,b: a+b)),
-                           BinFuncExpr(FuncTerm('-', lambda a,b: a-b))]),
-            Rule('unop', [UnFuncExpr(FuncTerm('squared', lambda a:a**2)),
-                          UnFuncExpr(FuncTerm('sqrt', lambda a:math.sqrt(a)))])
+            Rule('binop', [BinFuncExp(FuncTerm("+",lambda a,b: a+b)),
+                           BinFuncExp(FuncTerm('-', lambda a,b: a-b))]),
+            Rule('unop', [UnFuncExp(FuncTerm('squared', lambda a:a**2)),
+                          UnFuncExp(FuncTerm('sqrt', lambda a:math.sqrt(a)))])
         ]
 
         terminal_rules = [
