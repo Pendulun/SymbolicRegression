@@ -10,16 +10,6 @@ class TreeGenerator(ABC):
 class Individual():
     def __init__(self, root_node:Node):
         self._root = root_node
-        self._depth = None
-
-        self._define_nodes_depth()
-    
-    def _define_nodes_depth_helper(self):
-        pass
-
-    def _define_nodes_depth(self):
-        self._define_nodes_depth_helper
-
 
     def evaluate(self, data = None):
         return self._root.evaluate(data)
@@ -38,7 +28,7 @@ class Individual():
 
     @property
     def depth(self) -> int:
-        return self._root.heigth
+        return self._root.depth
     
     @property
     def root(self) -> Node:
@@ -54,11 +44,10 @@ class Individual():
         return self._root == other.root
 
 class Node():
-    def __init__(self, value = None, selection_prob:float = 1, parent_rule_name:str=None):
+    def __init__(self, value = None, selection_prob:float = 1, parent_rule_name:str=None, depth:int = None):
         self._value = value
         self._childs:List[Node] = list()
-        self._heigth = None
-        self._depth = None
+        self._depth = depth
         self.selection_prob = selection_prob
         self._parent_rule_name = parent_rule_name
     
@@ -67,17 +56,14 @@ class Node():
     
     def evaluate(self, *args):
         raise NotImplementedError(f"evaluate not implemented for {self.__class__.__name__} class!")
-
+    
     @property
-    def heigth(self) -> int:
-        if self._heigth == None:
-            childs_depths = [child.heigth for child in self._childs]
-            if len(childs_depths) > 0:
-                self._heigth =  max(childs_depths)+1
-            else:
-                self._heigth = 1
-
-        return self._heigth
+    def depth(self) -> int:
+        return self._depth
+    
+    @depth.setter
+    def depth(self, new_depth:int):
+        raise AttributeError("depth is not subscriptable")
     
     @property
     def value(self):

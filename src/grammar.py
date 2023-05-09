@@ -141,7 +141,7 @@ class Expansion():
     def terms(self, new_terms):
         raise AttributeError("terms is not subscriptable")
 
-    def to_node(self, parent_rule_name:str) -> Node:
+    def to_node(self, parent_rule_name:str, depth:int) -> Node:
         raise NotImplementedError(f"to_node is not implemented for {self.__class__.__name__}!")
 
     def has_terminal(self) -> bool:
@@ -176,8 +176,8 @@ class NumericExp(Expansion):
     def terms(self):
         return self._expansion_terms[0]
     
-    def to_node(self, parent_rule_name:str) -> Node:
-        return ConstNode(self.terms.value, parent_rule_name=parent_rule_name)
+    def to_node(self, parent_rule_name:str, depth:int) -> Node:
+        return ConstNode(self.terms.value, parent_rule_name=parent_rule_name, depth=depth)
     
     def __str__(self):
         return str(self._expansion_terms[0].value)
@@ -198,8 +198,8 @@ class VarExpr(StrExp):
     def __init__(self, term: Term):
         super().__init__(term)
 
-    def to_node(self, parent_rule_name:str) -> Node:
-        return VarNode(self.terms.value, parent_rule_name=parent_rule_name)
+    def to_node(self, parent_rule_name:str, depth:int) -> Node:
+        return VarNode(self.terms.value, parent_rule_name=parent_rule_name, depth=depth)
 
 class FuncExp(Expansion):
     def __init__(self, term:FuncTerm):
@@ -225,15 +225,15 @@ class UnFuncExp(FuncExp):
     def __init__(self, term:FuncTerm):
         super().__init__(term)
     
-    def to_node(self, parent_rule_name:str) -> Node:
-        return UnOPNode(self.terms, self.func, parent_rule_name=parent_rule_name)
+    def to_node(self, parent_rule_name:str, depth:int) -> Node:
+        return UnOPNode(self.terms, self.func, parent_rule_name=parent_rule_name, depth=depth)
 
 class BinFuncExp(FuncExp):
     def __init__(self, term:FuncTerm):
         super().__init__(term)
     
-    def to_node(self, parent_rule_name:str) -> Node:
-        return BinOPNode(self.terms, self.func, parent_rule_name=parent_rule_name)
+    def to_node(self, parent_rule_name:str, depth:int) -> Node:
+        return BinOPNode(self.terms, self.func, parent_rule_name=parent_rule_name, depth=depth)
 
 class Term:
     def __init__(self, value):
@@ -309,8 +309,8 @@ class FuncTerm(NonTerminalTerm):
         return str(self.value)
 
 class OPNode(Node):
-    def __init__(self, value, func:Callable, selection_prob:float=1, parent_rule_name:str=None):
-        super().__init__(value, selection_prob, parent_rule_name)
+    def __init__(self, value, func:Callable, selection_prob:float=1, parent_rule_name:str=None, depth:int = None):
+        super().__init__(value, selection_prob, parent_rule_name, depth)
         self._func = func
     
     @property
@@ -322,8 +322,8 @@ class OPNode(Node):
         raise AttributeError(f"Func is not subscriptable for {self.__class__.__name__}!")
 
 class BinOPNode(OPNode):
-    def __init__(self, value, func:Callable, selection_prob:float=1, parent_rule_name:str=None):
-        super().__init__(value, func, selection_prob, parent_rule_name)
+    def __init__(self, value, func:Callable, selection_prob:float=1, parent_rule_name:str=None, depth:int = None):
+        super().__init__(value, func, selection_prob, parent_rule_name, depth)
 
     def evaluate(self, *args):
         return self.func(self._childs[0].evaluate(*args), self._childs[1].evaluate(*args))
@@ -335,8 +335,8 @@ class BinOPNode(OPNode):
         return my_str
 
 class UnOPNode(OPNode):
-    def __init__(self, value, func:Callable, selection_prob:float=1, parent_rule_name:str=None):
-        super().__init__(value, func, selection_prob, parent_rule_name)
+    def __init__(self, value, func:Callable, selection_prob:float=1, parent_rule_name:str=None, depth:int = None):
+        super().__init__(value, func, selection_prob, parent_rule_name, depth)
     
     def evaluate(self, *args):
         return self.func(self._childs[0].evaluate(*args))
@@ -347,8 +347,8 @@ class UnOPNode(OPNode):
         return my_str
 
 class VarNode(Node):
-    def __init__(self, value, selection_prob:float=1, parent_rule_name:str=None):
-        super().__init__(value, selection_prob, parent_rule_name)
+    def __init__(self, value, selection_prob:float=1, parent_rule_name:str=None, depth:int = None):
+        super().__init__(value, selection_prob, parent_rule_name, depth)
     
     def add_child(self, new_child: Node):
         raise NotImplementedError("I'm a VarNode, I don't have children!")
@@ -361,8 +361,8 @@ class VarNode(Node):
         return self.value
 
 class ConstNode(Node):
-    def __init__(self, value:None, selection_prob:float=1, parent_rule_name:str=None):
-        super().__init__(value, selection_prob, parent_rule_name)
+    def __init__(self, value:None, selection_prob:float=1, parent_rule_name:str=None, depth:int = None):
+        super().__init__(value, selection_prob, parent_rule_name, depth)
     
     def add_child(self, new_child: Node):
         raise NotImplementedError("I'm a ConstNode, I don't have children!")
@@ -400,26 +400,29 @@ class GrammarTreeGenerator(TreeGenerator):
         raise AttributeError("grammar is not subscriptable!")
 
 class ExpansionListTreeGenerator(GrammarTreeGenerator):
-    def generate(self, expansion_idxs: list[int], starting_rule:Rule=None) -> Node:
+    def generate(self, expansion_idxs: list[int], starting_rule:Rule=None, curr_depth:int=None) -> Node:
         if starting_rule == None:
             starting_rule = self.grammar.starting_rule
-        return self._generator_helper(starting_rule, list(expansion_idxs))
+        
+        if curr_depth == None:
+            curr_depth = 0
+        return self._generator_helper(starting_rule, list(expansion_idxs), curr_depth=curr_depth)
     
-    def _generator_helper(self, rule:Rule, expansions_idx:list) -> Node:
+    def _generator_helper(self, rule:Rule, expansions_idx:list, curr_depth:int) -> Node:
         curr_exp = rule.at(expansions_idx.pop(0))
 
         if type(curr_exp.terms) in [list, tuple]:
             terms = list(curr_exp.terms)
 
             if len(terms) == 2:
-                curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[0].value)
-                child_node = self._generator_helper(self.grammar.rule(terms[1].value), expansions_idx)
+                curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[0].value, curr_depth)
+                child_node = self._generator_helper(self.grammar.rule(terms[1].value), expansions_idx, curr_depth+1)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
-                left_child = self._generator_helper(self.grammar.rule(terms[0].value), expansions_idx)
-                curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[1].value)
-                right_child = self._generator_helper(self.grammar.rule(terms[2].value), expansions_idx)
+                left_child = self._generator_helper(self.grammar.rule(terms[0].value), expansions_idx, curr_depth+1)
+                curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[1].value, curr_depth)
+                right_child = self._generator_helper(self.grammar.rule(terms[2].value), expansions_idx, curr_depth+1)
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
                 return curr_node
@@ -428,25 +431,28 @@ class ExpansionListTreeGenerator(GrammarTreeGenerator):
         
         else:
             #There is only one value inside the current expansion, that is, a rule
-            return self._new_node_from_expansion_of_rule(expansions_idx.pop(0), curr_exp.terms.value)
+            return self._new_node_from_expansion_of_rule(expansions_idx.pop(0), curr_exp.terms.value, curr_depth)
 
-    def _new_node_from_expansion_of_rule(self, expansion_idx, rule_name):
+    def _new_node_from_expansion_of_rule(self, expansion_idx, rule_name, curr_depth):
         curr_rule = self.grammar.rule(rule_name)
         expansion = curr_rule.at(expansion_idx)
-        curr_node = expansion.to_node(curr_rule.name)
+        curr_node = expansion.to_node(curr_rule.name, curr_depth)
         return curr_node
 
 class GrowTreeGenerator(GrammarTreeGenerator):
-    def generate(self, max_depth:int, starting_rule:Rule=None) -> Node:
+    def generate(self, max_depth:int, starting_rule:Rule=None, curr_depth:int=None) -> Node:
         if starting_rule == None:
             starting_rule = self.grammar.starting_rule
-        return self._generator_helper(starting_rule, max_depth)
+        
+        if curr_depth == None:
+            curr_depth = 0
+        return self._generator_helper(starting_rule, max_depth, curr_depth = curr_depth)
     
-    def _generator_helper(self, rule:Rule, max_depth:int) -> Node:
+    def _generator_helper(self, rule:Rule, max_depth:int, curr_depth:int) -> Node:
         if max_depth == 1:
             curr_rule = self.grammar.random_terminal_rule()
             expansion = curr_rule.random_expansion()
-            return expansion.to_node(curr_rule.name)
+            return expansion.to_node(curr_rule.name, curr_depth)
         
         curr_exp = rule.random_expansion()
 
@@ -454,16 +460,14 @@ class GrowTreeGenerator(GrammarTreeGenerator):
             terms = list(curr_exp.terms)
 
             if len(terms) == 2:
-                curr_node = self.new_node_from_random_expansion_of_rule(terms[0].value)
-                child_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth-1)
+                curr_node = self.new_node_from_random_expansion_of_rule(terms[0].value, curr_depth)
+                child_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth-1, curr_depth+1)
                 curr_node.add_child(child_node)
                 return curr_node
             elif len(terms) == 3:
-                left_child = self._generator_helper(self.grammar.rule(terms[0].value), max_depth-1)
-                curr_rule = self.grammar.rule(terms[1].value)
-                expansion = curr_rule.random_expansion()
-                curr_node = expansion.to_node(curr_rule.name)
-                right_child = self._generator_helper(self.grammar.rule(terms[2].value), max_depth-1)
+                left_child = self._generator_helper(self.grammar.rule(terms[0].value), max_depth-1, curr_depth+1)
+                curr_node = self.new_node_from_random_expansion_of_rule(terms[1].value, curr_depth)
+                right_child = self._generator_helper(self.grammar.rule(terms[2].value), max_depth-1, curr_depth+1)
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
                 return curr_node
@@ -474,10 +478,10 @@ class GrowTreeGenerator(GrammarTreeGenerator):
             #There is only one value inside the current expansion, that is, a rule
             curr_rule = self.grammar.rule(curr_exp.terms.value)
             expansion = curr_rule.random_expansion()
-            return expansion.to_node(curr_rule.name)
+            return expansion.to_node(curr_rule.name, curr_depth)
 
-    def new_node_from_random_expansion_of_rule(self, rule_name:str):
+    def new_node_from_random_expansion_of_rule(self, rule_name:str, curr_depth:int):
         curr_rule = self.grammar.rule(rule_name)
         expansion = curr_rule.random_expansion()
-        curr_node = expansion.to_node(curr_rule.name)
+        curr_node = expansion.to_node(curr_rule.name, curr_depth)
         return curr_node
