@@ -1,7 +1,7 @@
-from grammar import Grammar, Individual
+from grammar import Grammar, Individual, GrowTreeGenerator
 from abc import ABC, abstractmethod
 import copy
-from ind_generator import IndividualGenerator, Individual
+from ind_generator import TreeGenerator, Individual
 import statistics
 import numpy as np
 import random
@@ -9,8 +9,8 @@ from typing import Callable, Any, List, Union
 
 
 class GP(ABC):
-    def __init__(self, ind_generator:IndividualGenerator) -> None:
-        self._ind_generator = ind_generator
+    def __init__(self, grammar_tree_generator:TreeGenerator) -> None:
+        self._grammar_tree_generator = grammar_tree_generator
         self._individuals:list[Individual] = list()
     
     @abstractmethod
@@ -26,13 +26,14 @@ class GP(ABC):
         return self._individuals
 
 class GrammarGP(GP):
-    def __init__(self, ind_generator:IndividualGenerator, grammar:Grammar) -> None:
+    def __init__(self, ind_generator:TreeGenerator, grammar:Grammar) -> None:
         super().__init__(ind_generator)
         self._grammar = grammar
     
     def generate_pop(self, n_individuals:int, max_depth:int):
         for _ in range(n_individuals):
-            self._individuals.append(self._ind_generator.generate(max_depth))
+            new_ind = Individual(self._grammar_tree_generator.generate(max_depth))
+            self._individuals.append(new_ind)
 
 class SelectionFromData(ABC):
     
@@ -142,7 +143,14 @@ class LexicaseSelection(SelectionFromData):
             for sample in data_samples:
                 ind_fitnesses:np.array = self._evaluate_individuals(individuals, target, good_ind_idxs, sample)
 
-                good_ind_idxs = self.select_good_enough_inds_idxs(good_ind_idxs, ind_fitnesses)
+                selected_good_ind_idxs = self.select_good_enough_inds_idxs(good_ind_idxs, ind_fitnesses)
+
+                if len(selected_good_ind_idxs) == 0:
+                    good_ind_idxs = random.choice(good_ind_idxs)
+                    print("WARNING: selected_good_ind_idx was empty! Choosing a random ind!")
+                    break
+                
+                good_ind_idxs = selected_good_ind_idxs
 
                 if len(good_ind_idxs) == 1:
                     #Filtered enough individuals
@@ -185,6 +193,24 @@ class LexicaseSelection(SelectionFromData):
 
 class MutationOP():
     @staticmethod
-    def mutate(individual:Individual, grammar:Grammar):
-        random_node = individual.random_node()
-        
+    def mutate(individual:Individual, grammar:Grammar, max_depth:int, tree_generator:GrowTreeGenerator):
+        """
+        This mutation operator assumes that any node can replace another with itself and its sub-tree
+        """
+        random_node, parent_node = individual.random_node_and_parent()
+        curr_depth = random_node.depth
+
+        #Assumes that a node can be replaced by any other node
+        starting_rule = grammar.rule(random_node.parent_rule)
+
+        new_node = tree_generator.generate(max_depth=max_depth,
+                                           starting_rule=starting_rule,
+                                           curr_depth=curr_depth)
+
+        if parent_node is not None:
+            parent_node.substitute_child(random_node, new_node)
+        else:
+            #random_node is root_node
+            individual = Individual(new_node)
+
+        return individual

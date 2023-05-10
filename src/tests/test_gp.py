@@ -1,6 +1,6 @@
 from unittest import TestCase, main
-from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExpr, UnFuncExpr, StrExp, VarExpr, Term, FuncTerm
-from grammar import GrowIndGenerator
+from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExp, UnFuncExp, StrExp, VarExpr, Term, FuncTerm
+from grammar import GrowTreeGenerator
 from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection, LexicaseSelection, MutationOP
 import math
 import numpy as np
@@ -14,9 +14,9 @@ class TestGrammarGP(TestCase):
                           Expansion((Term('expr'),Term('binop'),Term('expr'))),
                           Expansion((Term('unop'), Term('expr')))]),
             Rule('term', [StrExp(Term('var')), StrExp(Term('const'))]),
-            Rule('binop', [BinFuncExpr(FuncTerm("+",lambda a,b: a+b)),
-                           BinFuncExpr(FuncTerm('-', lambda a,b: a-b))]),
-            Rule('unop', [UnFuncExpr(FuncTerm('squared', lambda a:a**2))])
+            Rule('binop', [BinFuncExp(FuncTerm("+",lambda a,b: a+b)),
+                           BinFuncExp(FuncTerm('-', lambda a,b: a-b))]),
+            Rule('unop', [UnFuncExp(FuncTerm('squared', lambda a:a**2))])
         ]
 
         terminal_rules = [
@@ -36,7 +36,7 @@ class TestGrammarGP(TestCase):
     
     def test_generate_n_individuals(self):
         grammar = self.get_grammar()
-        ind_generator = GrowIndGenerator(grammar)
+        ind_generator = GrowTreeGenerator(grammar)
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
@@ -46,7 +46,7 @@ class TestGrammarGP(TestCase):
     def test_roullete_selection(self):
         roullete_selection = RoulleteSelection()
         grammar = self.get_grammar()
-        ind_generator = GrowIndGenerator(grammar)
+        ind_generator = GrowTreeGenerator(grammar)
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
@@ -75,7 +75,7 @@ class TestGrammarGP(TestCase):
     def test_tournament_selection(self):
         selection_mode = TournamentSelection()
         grammar = self.get_grammar()
-        ind_generator = GrowIndGenerator(grammar)
+        ind_generator = GrowTreeGenerator(grammar)
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
@@ -121,7 +121,7 @@ class TestGrammarGP(TestCase):
     def test_lexicase_selection(self):
         selection_mode = LexicaseSelection()
         grammar = self.get_grammar()
-        ind_generator = GrowIndGenerator(grammar)
+        ind_generator = GrowTreeGenerator(grammar)
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
@@ -142,14 +142,14 @@ class TestGrammarGP(TestCase):
     
     def test_mutation_operator(self):
         grammar = self.get_grammar()
-        ind_generator = GrowIndGenerator(grammar)
+        ind_generator = GrowTreeGenerator(grammar)
         grammar_gp = GrammarGP(ind_generator, grammar)
         n_individuals = 1
         max_depth = 4
         grammar_gp.generate_pop(n_individuals, max_depth)
         original_ind = grammar_gp.individuals[0]
-        new_ind = MutationOP.mutate(original_ind, grammar)
-        self.assertFalse(str(original_ind) == str(new_ind))
+        new_ind = MutationOP.mutate(original_ind, grammar, max_depth, ind_generator)
+        self.assertTrue(new_ind.depth <= max_depth)
 
 
 if __name__ == "__main__":
