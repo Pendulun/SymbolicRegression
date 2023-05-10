@@ -16,6 +16,9 @@ class Grammar():
     def is_rule(self, rule_str:str) -> bool:
         return rule_str in self.all_rules.keys()
     
+    def is_terminal_rule(self, rule_str:str) ->bool:
+        return rule_str in self.terminal_rules
+    
     def add_terminal_rule(self, rule:Rule):
         if rule.name not in self.terminal_rules:
             self.terminal_rules.append(rule.name)
@@ -45,12 +48,16 @@ class Grammar():
     def _expand_idxs_helper(self, rule:Rule, expansions_idx:list) -> str:
         curr_exp = rule.at(expansions_idx.pop(0))
 
-        terms_was_list = False
-        if type(curr_exp.terms) in [list, tuple]:
-            terms = list(curr_exp.terms)
-            terms_was_list = True
-        else:
-            terms = [curr_exp.terms]
+        more_than_one_exp = False
+        # if type(curr_exp.terms) in [list, tuple]:
+        #     terms = list(curr_exp.terms)
+        #     terms_was_list = True
+        # else:
+        #     terms = [curr_exp.terms]
+        terms = curr_exp.terms
+        if len(terms) > 1:
+            more_than_one_exp = True
+
         exp_str = ""
         
         for term in terms:
@@ -60,7 +67,7 @@ class Grammar():
                 exp_str += " "+str(term)
         
         exp_str = exp_str.strip()
-        if terms_was_list:
+        if more_than_one_exp:
             exp_str = "("+exp_str+")"
         
         return exp_str
@@ -177,10 +184,10 @@ class NumericExp(Expansion):
     
     @property
     def terms(self):
-        return self._expansion_terms[0]
+        return self._expansion_terms
     
     def to_node(self, parent_rule_name:str, depth:int) -> Node:
-        return ConstNode(self.terms.value, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.7)
+        return ConstNode(self.terms[0].value, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.7)
     
     def __str__(self):
         return str(self._expansion_terms[0].value)
@@ -192,17 +199,17 @@ class StrExp(Expansion):
     
     @property
     def terms(self):
-        return self._expansion_terms[0]
+        return self._expansion_terms
     
     def __str__(self):
-        return self._expansion_terms[0].value
+        return str(self._expansion_terms[0].value)
 
 class VarExpr(StrExp):
     def __init__(self, term: Term):
         super().__init__(term)
 
     def to_node(self, parent_rule_name:str, depth:int) -> Node:
-        return VarNode(self.terms.value, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.7)
+        return VarNode(self.terms[0].value, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.7)
 
 class FuncExp(Expansion):
     def __init__(self, term:FuncTerm):
@@ -211,7 +218,7 @@ class FuncExp(Expansion):
     
     @property
     def terms(self):
-        return self._expansion_terms[0]
+        return self._expansion_terms
     
     @property
     def func(self) -> Callable:
@@ -222,21 +229,21 @@ class FuncExp(Expansion):
         raise AttributeError("func is not subscriptable!")
     
     def __str__(self):
-        return self._expansion_terms[0].value
+        return str(self._expansion_terms[0].value)
 
 class UnFuncExp(FuncExp):
     def __init__(self, term:FuncTerm):
         super().__init__(term)
     
     def to_node(self, parent_rule_name:str, depth:int) -> Node:
-        return UnOPNode(self.terms, self.func, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.3)
+        return UnOPNode(self.terms[0], self.func, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.3)
 
 class BinFuncExp(FuncExp):
     def __init__(self, term:FuncTerm):
         super().__init__(term)
     
     def to_node(self, parent_rule_name:str, depth:int) -> Node:
-        return BinOPNode(self.terms, self.func, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.3)
+        return BinOPNode(self.terms[0], self.func, parent_rule_name=parent_rule_name, depth=depth, selection_prob=0.3)
 
 class Term:
     def __init__(self, value):
@@ -302,8 +309,8 @@ class FuncTerm(NonTerminalTerm):
         
         return (self.value, self.func) == (other.value, other.func)
     
-    def __repr__(self) -> str:
-        return f"FuncTerm({self.value}, {self.func})"
+    # def __repr__(self) -> str:
+    #     return f"FuncTerm({self.value}, {self.func})"
     
     def __hash__(self) -> int:
         return hash((self.value, self.func))
@@ -332,10 +339,13 @@ class BinOPNode(OPNode):
         return self.func(self._childs[0].evaluate(*args), self._childs[1].evaluate(*args))
 
     def __str__(self):
-        my_str = "("+str(self._childs[0])+" "
-        my_str += str(self.value)
-        my_str += " "+str(self._childs[1])+")"
-        return my_str
+        if len(self._childs) > 0:
+            my_str = "("+str(self._childs[0])+" "
+            my_str += str(self.value)
+            my_str += " "+str(self._childs[1])+")"
+            return my_str
+        
+        return str(self.value)
 
 class UnOPNode(OPNode):
     def __init__(self, value, func:Callable, selection_prob:float=1, parent_rule_name:str=None, depth:int = None):
@@ -345,9 +355,12 @@ class UnOPNode(OPNode):
         return self.func(self._childs[0].evaluate(*args))
     
     def __str__(self):
-        my_str = str(self.value)+" ("
-        my_str += str(self._childs[0])+")"
-        return my_str
+        if len(self._childs) > 0:
+            my_str = str(self.value)+" ("
+            my_str += str(self._childs[0])+")"
+            return my_str
+        
+        return str(self.value)
 
 class VarNode(Node):
     def __init__(self, value, selection_prob:float=1, parent_rule_name:str=None, depth:int = None):
@@ -414,29 +427,27 @@ class ExpansionListTreeGenerator(GrammarTreeGenerator):
     def _generator_helper(self, rule:Rule, expansions_idx:list, curr_depth:int) -> Node:
         curr_exp = rule.at(expansions_idx.pop(0))
 
-        if type(curr_exp.terms) in [list, tuple]:
-            terms = list(curr_exp.terms)
+        terms = curr_exp.terms
 
-            if len(terms) == 2:
-                curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[0].value, curr_depth, rule.name)
-                child_node = self._generator_helper(self.grammar.rule(terms[1].value), expansions_idx, curr_depth+1)
-                curr_node.add_child(child_node)
-                return curr_node
-            elif len(terms) == 3:
-                left_child = self._generator_helper(self.grammar.rule(terms[0].value), expansions_idx, curr_depth+1)
-                curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[1].value, curr_depth, rule.name)
-                right_child = self._generator_helper(self.grammar.rule(terms[2].value), expansions_idx, curr_depth+1)
-                curr_node.add_child(left_child)
-                curr_node.add_child(right_child)
-                return curr_node
-            else:
-                raise ValueError("Terms size is not 2 or 3!")
-        
+        if len(terms) == 1:
+            #There is only one value inside the current expansion, that is, a rule. NO, its WRONG
+            curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), curr_exp.terms[0].value, 
+                                                            curr_depth, rule.name)
+            return curr_node
+        elif len(terms) == 2:
+            curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[0].value, curr_depth, rule.name)
+            child_node = self._generator_helper(self.grammar.rule(terms[1].value), expansions_idx, curr_depth+1)
+            curr_node.add_child(child_node)
+            return curr_node
+        elif len(terms) == 3:
+            left_child = self._generator_helper(self.grammar.rule(terms[0].value), expansions_idx, curr_depth+1)
+            curr_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), terms[1].value, curr_depth, rule.name)
+            right_child = self._generator_helper(self.grammar.rule(terms[2].value), expansions_idx, curr_depth+1)
+            curr_node.add_child(left_child)
+            curr_node.add_child(right_child)
+            return curr_node
         else:
-            #There is only one value inside the current expansion, that is, a rule
-            new_node = self._new_node_from_expansion_of_rule(expansions_idx.pop(0), curr_exp.terms.value, 
-                                                             curr_depth, rule.name)
-            return new_node
+            raise ValueError("Terms size is greater than 3!")
 
     def _new_node_from_expansion_of_rule(self, expansion_idx, rule_name, curr_depth, parent_rule_name:str) -> Node:
         curr_rule = self.grammar.rule(rule_name)
@@ -451,44 +462,60 @@ class GrowTreeGenerator(GrammarTreeGenerator):
 
         if curr_depth == None:
             curr_depth = 0
-        return self._generator_helper(starting_rule, max_depth, curr_depth = curr_depth)
+        
+        root_node = self._generator_helper(starting_rule, max_depth, curr_depth = curr_depth)
+        return root_node
     
     def _generator_helper(self, rule:Rule, max_depth:int, curr_depth:int) -> Node:
         if self.is_last_depth(max_depth, curr_depth):
-            curr_rule = self.grammar.random_terminal_rule()
-            expansion = curr_rule.random_expansion()
-            return expansion.to_node(curr_rule.name, curr_depth)
+            if self.grammar.is_terminal_rule(rule.name):
+                curr_rule = rule
+            else:
+                curr_rule = self.grammar.random_terminal_rule()
+                
+            curr_exp = curr_rule.random_expansion()
+            return curr_exp.to_node(curr_rule.name, curr_depth)
         
         curr_exp = rule.random_expansion()
-        if type(curr_exp.terms) in [list, tuple]:
-            terms = list(curr_exp.terms)
-
-            if len(terms) == 2:
-                curr_node = self.new_node_from_random_expansion_of_rule(terms[0].value, curr_depth, rule.name)
+        terms = list(curr_exp.terms)
+        
+        if len(terms) == 1:
+            # print("Only onde value. It must be a rule! (?)") #NO
+            if self.grammar.is_rule(curr_exp.terms[0].value):
+                node = self._generator_helper(self.grammar.rule(curr_exp.terms[0].value), max_depth, curr_depth+1)
+                return node
+            else:
+                node = curr_exp.to_node(rule.name, curr_depth)
+                return node 
+        elif len(terms) == 2:
+            curr_node = self._generator_helper(self.grammar.rule(terms[0].value), max_depth, curr_depth+1)
+            if self.curr_node_is_not_terminal(max_depth, curr_depth):
+                #At this point, curr_node is not a func, but a terminal, as in the next recursion it will be in the last depth
                 child_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth, curr_depth+1)
                 curr_node.add_child(child_node)
-                return curr_node
-            elif len(terms) == 3:
-                left_child = self._generator_helper(self.grammar.rule(terms[0].value), max_depth, curr_depth+1)
-                curr_node = self.new_node_from_random_expansion_of_rule(terms[1].value, curr_depth, rule.name)
-                right_child = self._generator_helper(self.grammar.rule(terms[2].value), max_depth, curr_depth+1)
+            return curr_node
+        elif len(terms) == 3:
+            left_child = self._generator_helper(self.grammar.rule(terms[0].value), max_depth, curr_depth+1)
+            curr_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth, curr_depth+1)
+            right_child = self._generator_helper(self.grammar.rule(terms[2].value), max_depth, curr_depth+1)
+
+            if self.curr_node_is_not_terminal(max_depth, curr_depth):
+                #At this point, curr_node is not a func, but a terminal, as in the next recursion it will be in the last depth
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
-                return curr_node
-            else:
-                raise ValueError("Terms size is not 2 or 3!")
-        
+
+            return curr_node
         else:
-            #There is only one value inside the current expansion, that is, a rule
-            curr_rule = self.grammar.rule(curr_exp.terms.value)
-            expansion = curr_rule.random_expansion()
-            return expansion.to_node(rule.name, curr_depth)
+            raise ValueError("Terms size is bigger than 3!")
+
+    def curr_node_is_not_terminal(self, max_depth, curr_depth):
+        return not self.is_last_depth(max_depth, curr_depth+1)
 
     def is_last_depth(self, max_depth, curr_depth):
         return max_depth - curr_depth == 0
 
     def new_node_from_random_expansion_of_rule(self, rule_name:str, curr_depth:int, parent_rule_name:str):
         curr_rule = self.grammar.rule(rule_name)
-        expansion = curr_rule.random_expansion()
-        curr_node = expansion.to_node(parent_rule_name, curr_depth)
+        curr_exp = curr_rule.random_expansion()
+        curr_node = curr_exp.to_node(parent_rule_name, curr_depth)
         return curr_node
