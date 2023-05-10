@@ -173,7 +173,7 @@ class LexicaseSelection(SelectionFromData):
         return run_inds_idxs
 
     def good_enough(self, ind_fitness, best_fitness, mad) -> bool:
-        return ind_fitness < best_fitness + mad
+        return ind_fitness <= best_fitness + mad
 
     def calculate_mad(self, ind_fitnesses:np.array):
         error_median = statistics.median(ind_fitnesses)
