@@ -5,7 +5,7 @@ from ind_generator import TreeGenerator, Individual
 import statistics
 import numpy as np
 import random
-from typing import Callable, Any, List, Union
+from typing import Callable, Any, List, Union, Tuple
 
 
 class GP(ABC):
@@ -214,3 +214,42 @@ class MutationOP():
             individual = Individual(new_node)
 
         return individual
+
+class CrossoverOP():
+    @staticmethod
+    def cross(ind1:Individual, ind2:Individual, max_depth:int) -> Tuple[Individual, Individual]:
+        ind1_copy = copy.deepcopy(ind1)
+        ind2_copy = copy.deepcopy(ind2)
+        
+        node1, parent_node1 = ind1_copy.random_node_and_parent()
+        node2, parent_node2 = ind2_copy.find_node_and_parent_of_type(type(node1), max_depth - node1.depth)
+        
+        if CrossoverOP.found_a_equivalent_node(node2):
+            old_node1_depth = node1.depth
+            old_node2_depth = node2.depth
+            if CrossoverOP.node_child_isnt_root(parent_node2):
+                node1.update_depth(old_node2_depth)
+                parent_node2.substitute_child(node2, node1)
+            else:
+                node1.update_depth(0)
+                ind2_copy = Individual(node1)
+            
+            if CrossoverOP.node_child_isnt_root(parent_node1):
+                node2.update_depth(old_node1_depth)
+                parent_node1.substitute_child(node1, node2)
+            else:
+                node2.update_depth(0)
+                ind1_copy = Individual(node2)
+
+            return ind1_copy, ind2_copy
+        else:
+            #crossover could not be applied
+            return None, None
+
+    @staticmethod
+    def node_child_isnt_root(parent_node2):
+        return parent_node2 is not None
+
+    @staticmethod
+    def found_a_equivalent_node(node2):
+        return node2 is not None

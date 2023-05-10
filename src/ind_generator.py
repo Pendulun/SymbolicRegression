@@ -25,6 +25,27 @@ class Individual():
                 else:
                     for child in curr_node.childs:
                         node_stack.append((child, curr_node))
+    
+    def find_node_and_parent_of_type(self, node_type, max_heigth:int) -> Tuple[Node, Node]:
+        """
+        Returns (None, None) if nothing was found
+        """
+        node_stack:List[Tuple[Node, Node]] = list()
+        node_stack.append((self.root, None))
+        nodes_with_parent_of_type_found = list()
+        while len(node_stack) > 0:
+            curr_node, node_parent = node_stack.pop()
+            
+            if isinstance(curr_node, node_type) and curr_node.heigth <= max_heigth:
+                nodes_with_parent_of_type_found.append((curr_node, node_parent))
+            
+            for child in curr_node.childs:
+                    node_stack.append((child, curr_node))
+        
+        if len(nodes_with_parent_of_type_found) > 0:
+            return random.choice(nodes_with_parent_of_type_found)
+        else:
+            return (None, None)
 
     @property
     def depth(self) -> int:
@@ -60,6 +81,11 @@ class Node():
     def substitute_child(self, old_node:Node, new_node:Node):
         old_node_index = self._childs.index(old_node)
         self._childs[old_node_index] = new_node
+
+    def update_depth(self, new_depth:int):
+        self._depth = new_depth
+        for child in self._childs:
+            child.update_depth(self._depth+1)
     
     @property
     def depth(self) -> int:

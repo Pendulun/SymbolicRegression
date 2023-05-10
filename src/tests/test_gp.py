@@ -1,7 +1,8 @@
 from unittest import TestCase, main
 from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExp, UnFuncExp, StrExp, VarExpr, Term, FuncTerm
 from grammar import GrowTreeGenerator
-from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection, LexicaseSelection, MutationOP
+from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection, LexicaseSelection
+from genetic_prog import CrossoverOP, MutationOP
 import math
 import numpy as np
 
@@ -116,6 +117,8 @@ class TestGrammarGP(TestCase):
         ind_fitness = 5
         best_fitness = 4
         mad = 1
+        self.assertTrue(lexicase_sel.good_enough(ind_fitness, best_fitness, mad))
+        mad=0.5
         self.assertFalse(lexicase_sel.good_enough(ind_fitness, best_fitness, mad))
     
     def test_lexicase_selection(self):
@@ -151,6 +154,21 @@ class TestGrammarGP(TestCase):
         new_ind = MutationOP.mutate(original_ind, grammar, max_depth, ind_generator)
         self.assertTrue(new_ind.depth <= max_depth)
 
+    def test_crossover_operator(self):
+        grammar = self.get_grammar()
+        ind_generator = GrowTreeGenerator(grammar)
+        grammar_gp = GrammarGP(ind_generator, grammar)
+        n_individuals = 2
+        max_depth = 4
+        grammar_gp.generate_pop(n_individuals, max_depth)
+        ind1 = grammar_gp.individuals[0]
+        ind2 = grammar_gp.individuals[1]
+        new_ind1, new_ind2 = CrossoverOP.cross(ind1, ind2, max_depth)
+        if new_ind1 is not None:
+            self.assertTrue(new_ind1.depth <= max_depth)
 
+        if new_ind2 is not None:
+            self.assertTrue(new_ind2.depth <= max_depth)
+        
 if __name__ == "__main__":
     main()
