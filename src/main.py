@@ -6,6 +6,7 @@ import argparse
 import math
 import numpy as np
 import pandas as pd
+import pathlib
 import random
 import time
 from tqdm import tqdm
@@ -88,10 +89,18 @@ def configure_parser() -> argparse.ArgumentParser:
                         default=0.3,
                         help="The mutation probability. Default=0.3")
     parser.add_argument("--random_seed",
-                        type=float,
+                        type=int,
                         required=False,
-                        default=random.randint(1000),
+                        default=random.randint(1, 1000),
                         help="The random seed to use. There is no default.")
+    parser.add_argument("--num_runs",
+                        type=int,
+                        default=30,
+                        help="The number of runs. Default: 30"
+                        )
+    parser.add_argument("--base_name",
+                        type=str,
+                        help="The data base name.")
     return parser
     
 
@@ -167,17 +176,33 @@ def evaluate_individual(data, target, fitness_func, individual):
 def complete_columns_names(df:pd.DataFrame):
     columns_names = [f'X{i}' for i in range(1, len(df.columns))]
     columns_names.append("Y")
-    print(columns_names)
     df.columns = columns_names
     return df
 
-if __name__ == "__main__":
-    parser = configure_parser()
-    args = parser.parse_args()
+def save_run_stats(results_folder, run_results_folder, run_id, grammar_gp:GrammarGP):
+    single_run_stats = {
+            'best_fit':grammar_gp._best_fitness_by_gen,
+            'worst_fit':grammar_gp._worst_fitness_by_gen,
+            'std_fit':grammar_gp._std_fitness_by_gen,
+            'mean_fit':grammar_gp._mean_fitness_by_gen, 
+            'n_unique_inds':grammar_gp._num_unique_inds_by_gen,
+            'better_than_parents':grammar_gp._num_ind_better_than_parents_after_cross_by_gen, 
+            'worst_than_parents':grammar_gp._num_ind_worst_than_parents_after_cross_by_gen
+        }
 
-    random.seed(args.random_seed)
-    print(f"Random seed used: {args.random_seed}")
+    stats_by_run_df = pd.DataFrame(single_run_stats)
+    stats_by_run_df.to_csv(results_folder / run_results_folder / f"stats_by_run_{run_id}.csv", index=False)
 
+def get_selector(args):
+    if args.selection_type == 'Tournament':
+        selector = TournamentSelection
+    elif args.selection_type == 'Roullete':
+        selector = RoulleteSelection
+    elif args.selection_type == 'Lexicase':
+        selector = LexicaseSelection
+    return selector
+
+def read_data(args):
     train_data_df = pd.read_csv(args.train_data_path)
     test_data_df = pd.read_csv(args.test_data_path)
 
@@ -186,29 +211,43 @@ if __name__ == "__main__":
 
     train_data = train_data_df.to_dict(orient='records')
     test_data = test_data_df.to_dict(orient='records')
+    num_features = len(train_data_df.columns)-1
+    return train_data,test_data,num_features
 
+if __name__ == "__main__":
+    parser = configure_parser()
+    args = parser.parse_args()
+
+    random.seed(args.random_seed)
+    print(f"Random seed used: {args.random_seed}")
+
+    train_data, test_data, num_features = read_data(args)
+    
+    num_runs = args.num_runs
+
+    selector = get_selector(args)
     single_data_instance_fitness_func = lambda a, b: abs(a-b) 
-    if args.selection_type == 'Tournament':
-        selector = TournamentSelection
-    elif args.selection_type == 'Roullete':
-        selector = RoulleteSelection
-    elif args.selection_type == 'Lexicase':
-        selector = LexicaseSelection
-
     selection_mode_args = {'k':args.selection_k,
                         'better_fitness':args.better_fitness,
                         'fitness_func':single_data_instance_fitness_func}
     
     whole_dataset_fitness_func = whole_dataset_fitness
-    num_features = len(train_data_df.columns)-1
-    best_ind_train_fitnesses = list()
-    best_ind_test_fitnesses = list()
-    times_list = list()
-    for run_id in tqdm(range(30)):
-        print(f"--------RUN ID: {run_id}")
+    
+    fitness_stats_list = list()
+
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+
+    results_folder = pathlib.Path("../results")
+    results_folder.mkdir(parents=True, exist_ok=True)
+
+    base_name_folder = results_folder / args.base_name
+
+    run_results_folder = base_name_folder / timestr
+    run_results_folder.mkdir(parents=True, exist_ok=False)
+
+    for run_id in tqdm(range(num_runs)):
         grammar = configure_grammar(num_features)
-        ind_generator = GrowTreeGenerator(grammar)
-        grammar_gp = GrammarGP(ind_generator, grammar)
+        grammar_gp = GrammarGP(GrowTreeGenerator(grammar), grammar)
         grammar_gp.generate_starting_pop(args.num_inds, args.max_height)
 
         start = time.time()
@@ -224,18 +263,19 @@ if __name__ == "__main__":
                                 p_mutation = args.p_mut,
                                 p_crossover = args.p_cross, 
                                 max_height = args.max_height)
-        print(f"Fitness on test: {train_fitness}")
         end = time.time()
-        best_ind_train_fitnesses.append(train_fitness)
         total_time = end-start
-        print(f"Elapsed time: {total_time} seconds")
-        times_list.append(total_time)
+        
+        save_run_stats(results_folder, run_results_folder, run_id, grammar_gp)
+
         test_fitness = evaluate_individual(data = test_data,
                                                   target = args.target_col,
                                                   fitness_func = whole_dataset_fitness_func,
                                                   individual = best_ind)
-        best_ind_test_fitnesses.append(test_fitness)
-        print(f"Fitness on test: {test_fitness}")
-    
-    print(f"Mean time: {sum(times_list)/len(times_list)}")
+        
+        fitness_stats = {'train_fit':train_fitness, 'test_fit':test_fitness, 'train_time_seconds':total_time}
+        fitness_stats_list.append(fitness_stats)
+
+    fitness_df = pd.DataFrame(fitness_stats_list)
+    fitness_df.to_csv(results_folder / run_results_folder / "fitness_stats.csv", index=False)
     
