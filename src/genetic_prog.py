@@ -37,6 +37,15 @@ class GrammarGP(GP):
     def __init__(self, ind_generator:TreeGenerator, grammar:Grammar) -> None:
         super().__init__(ind_generator)
         self._grammar = grammar
+        self._best_fitness_by_gen = list()
+        self._worst_fitness_by_gen = list()
+        self._std_fitness_by_gen = list()
+        self._mean_fitness_by_gen = list()
+        self._num_unique_inds_by_gen = list()
+        self._num_ind_better_than_parents_after_cross_by_gen = list()
+        self._num_ind_worst_than_parents_after_cross_by_gen = list()
+        self._saved_dataset_evaluations = 0
+        self._num_new_dataset_evaluations = 0
     
     def generate_starting_pop(self, n_individuals:int, max_height:int):
         for _ in range(n_individuals):
@@ -44,7 +53,7 @@ class GrammarGP(GP):
             self._individuals.append(new_ind)
     
     def adjust(self, n_generations:int, data:List[dict], target:str, 
-               selection_mode:SelectionFromData, selection_mode_args:dict, n_mutations:int, 
+               selector:SelectionFromData, selector_args:dict, n_mutations:int, 
                n_crossovers:int, dataset_fitness_func:Callable, elitism:bool=True,
                p_mutation:float=0.5, p_crossover:float=0.5, max_depth:int=5) -> Tuple[Individual, float]:
         """
@@ -59,59 +68,97 @@ class GrammarGP(GP):
         max_depth: (int) Individuals max depth
         """
         n_individuals = len(self._individuals)
+        self._raise_if_invalid_n_mutations_and_crossovers(n_mutations, n_crossovers, elitism, n_individuals)
+
+        k = selector_args['k']
+        better_fitness = selector_args['better_fitness']
+        single_data_fitness_func = selector_args['fitness_func']
+        n_inds_for_selection_and_ops = n_individuals - 1 if elitism else n_individuals
+
+        for _ in range(n_generations):
+
+            selected_inds = selector.select(self._individuals, data, target, single_data_fitness_func, 
+                                                  k=k, n=n_inds_for_selection_and_ops, better_fitness=better_fitness)            
+
+            next_gen_pop:List[Individual] = list()
+
+            new_mutated_inds = self.mutate(n_mutations, p_mutation, max_depth, selected_inds)
+            next_gen_pop.extend(new_mutated_inds)
+
+            new_crossed_inds = self.cross(n_crossovers, p_crossover, max_depth, selected_inds, 
+                                          data, target, dataset_fitness_func, better_fitness)
+            next_gen_pop.extend(new_crossed_inds)
+
+            ind_fitnesess = self._evaluate_gen_individuals(data, target, dataset_fitness_func)
+            if better_fitness == "lower":
+                best_fit_idx = np.argmin(ind_fitnesess)
+                worst_fit_idx = np.argmax(ind_fitnesess)
+            else:
+                best_fit_idx = np.argmax(ind_fitnesess)
+                worst_fit_idx = np.argmin(ind_fitnesess)
+
+            self._save_statistics(ind_fitnesess, best_fit_idx, worst_fit_idx)
+          
+            if elitism:
+               next_gen_pop.append(self._individuals[best_fit_idx])
+            
+            self._individuals = next_gen_pop
+        
+        ind_fitnesess = self._evaluate_gen_individuals(data, target, dataset_fitness_func)
+        if better_fitness == "lower":
+            best_fit_idx = np.argmin(ind_fitnesess)
+            best_fit = np.min(ind_fitnesess)
+        else:
+            best_fit_idx = np.argmax(ind_fitnesess)
+            best_fit = np.max(ind_fitnesess)
+
+        return self._individuals[best_fit_idx], best_fit
+
+    def _raise_if_invalid_n_mutations_and_crossovers(self, n_mutations, n_crossovers, elitism, n_individuals):
         expected_n_ops = n_individuals if not elitism else n_individuals -1
         if n_mutations + 2*n_crossovers != expected_n_ops:
             raise ValueError(f"Invalid values for n_mutations and n_crossovers! \
             n_mutations + 2*n_crossovers is {n_mutations + 2*n_crossovers} \
             but {expected_n_ops} was expected with elitism equals {elitism}!")
 
-        k = selection_mode_args['k']
-        better_fitness = selection_mode_args['better_fitness']
-        single_data_fitness_func = selection_mode_args['fitness_func']
-        n_inds_for_selection_and_ops = n_individuals - 1 if elitism else n_individuals
-        mutator = MutationOP()
-        crosser = CrossoverOP()
-        for gen in range(n_generations):
-            #Avaliar todos os indivíduos para estatísticas
-            ind_fitnesess = self._evaluate_curr_individuals(data, target, dataset_fitness_func)
+    def _save_statistics(self, ind_fitnesess, best_fit_idx, worst_fit_idx):
+        self._best_fitness_by_gen.append(ind_fitnesess[best_fit_idx])
+        self._worst_fitness_by_gen.append(ind_fitnesess[worst_fit_idx])
+        self._mean_fitness_by_gen.append(np.mean(ind_fitnesess))
+        self._std_fitness_by_gen.append(np.std(ind_fitnesess))
+        self._num_unique_inds_by_gen.append(len(set(ind_fitnesess)))
 
-            #Aplicar seleção
-            selected_inds = selection_mode.select(self._individuals, data, target, single_data_fitness_func, 
-                                                  k=k, n=n_inds_for_selection_and_ops, better_fitness=better_fitness)
-            
-
-            next_gen_pop:List[Individual] = list()
-
-            #Aplicar operadores
-            new_mutated_inds = self.mutate(n_mutations, p_mutation, max_depth, mutator, selected_inds)
-            next_gen_pop.extend(new_mutated_inds)
-
-            new_crossed_inds = self.cross(n_crossovers, p_crossover, max_depth, crosser, selected_inds)
-            next_gen_pop.extend(new_crossed_inds)
-
-            #aplicar elitismo
-            if elitism:
-                if better_fitness == "lower":
-                    best_fit_idx = np.argmin(ind_fitnesess)
-                else:
-                    best_fit_idx = np.argmax(ind_fitnesess)
-
-                next_gen_pop.append(self._individuals[best_fit_idx])
-            
-            self._individuals = next_gen_pop
-        
-        ind_fitnesess = self._evaluate_curr_individuals(data, target, dataset_fitness_func)
-        return self._individuals[np.argmax(ind_fitnesess)], np.max(ind_fitnesess)
-
-    def cross(self, n_crossovers, p_crossover, max_depth, crosser, selected_inds):
+    def cross(self, n_crossovers, p_crossover, max_depth, selected_inds, data:List[dict], 
+              target:str, dataset_fitness_func:Callable, better_fitness:str) -> List[Individual]:
         new_crossed_inds = list()
+        num_childs_better_than_parents = 0
+        num_childs_worst_than_parents = 0
         for _ in range(n_crossovers):
             random_ind1, random_ind2 = random.choices(selected_inds, k=2)
             if random.random() < p_crossover:
-                new_ind1, new_ind2 = crosser.cross(random_ind1, random_ind2, max_depth)
-                if new_ind1 is not None:
+                new_ind1, new_ind2 = CrossoverOP.cross(random_ind1, random_ind2, max_depth)
+
+                crossover_happened = new_ind1 is not None
+                if crossover_happened:
                     new_crossed_inds.append(new_ind1)
                     new_crossed_inds.append(new_ind2)
+
+                    parents_fits = self._evaluate_individuals(data, target, dataset_fitness_func, [random_ind1, random_ind2])
+                    parents_mean_fit = np.mean(parents_fits)
+                    new_inds_fits = self._evaluate_individuals(data, target, dataset_fitness_func, [new_ind1, new_ind2])
+
+                    for new_ind_fit in new_inds_fits:
+                        if better_fitness == 'lower':
+                            if new_ind_fit < parents_mean_fit:
+                                num_childs_better_than_parents += 1
+                            else:
+                                num_childs_worst_than_parents +=1
+                        else:
+                            if new_ind_fit > parents_mean_fit:
+                                num_childs_better_than_parents += 1
+                            else:
+                                num_childs_worst_than_parents +=1
+
                 else:
                     new_crossed_inds.append(copy.deepcopy(random_ind1))
                     new_crossed_inds.append(copy.deepcopy(random_ind2))
@@ -119,29 +166,45 @@ class GrammarGP(GP):
                 new_crossed_inds.append(copy.deepcopy(random_ind1))
                 new_crossed_inds.append(copy.deepcopy(random_ind2))
 
+        self._num_ind_better_than_parents_after_cross_by_gen.append(num_childs_better_than_parents)
+        self._num_ind_worst_than_parents_after_cross_by_gen.append(num_childs_worst_than_parents)
         return new_crossed_inds
 
-    def mutate(self, n_mutations, p_mutation, max_depth, mutator:MutationOP, selected_inds):
+    def mutate(self, n_mutations, p_mutation, max_depth, selected_inds) -> List[Individual]:
         new_mutated_inds = list()
         for _ in range(n_mutations):
             random_ind = random.choice(selected_inds)
             if random.random() < p_mutation:
-                new_ind = mutator.mutate(random_ind, self._grammar, max_depth, self._grammar_tree_generator)
+                new_ind = MutationOP.mutate(random_ind, self._grammar, max_depth, self._grammar_tree_generator)
+                new_ind._dataset_fitness = None
                 new_mutated_inds.append(new_ind)
             else:
                 new_mutated_inds.append(copy.deepcopy(random_ind))
         return new_mutated_inds
 
-    def _evaluate_curr_individuals(self, data:List[dict], target:str, fitness_func:Callable) -> np.array:
-        ind_fitnesses = np.empty(len(self._individuals))
+    def _evaluate_gen_individuals(self, data:List[dict], target:str, fitness_func:Callable) -> np.ndarray:
+        individuals = self._individuals
+        ind_fitnesses = self._evaluate_individuals(data, target, fitness_func, individuals)
+        return ind_fitnesses
+
+    def _evaluate_individuals(self, data, target, fitness_func, individuals:list[Individual]):
+        ind_fitnesses = np.empty(len(individuals))
         target_values = np.array([data_instance[target] for data_instance in data])
 
-        for ind_idx, ind in enumerate(self._individuals):
-            curr_ind_predictions = np.array(
-                [ind.evaluate(data_instance) for data_instance in data]
-                )
-            ind_fitnesses[ind_idx] = fitness_func(target_values, curr_ind_predictions)
-        
+        for ind_idx, ind in enumerate(individuals):
+
+            if not ind.was_evaluated_in_whole_dataset():
+                curr_ind_predictions = np.array(
+                    [ind.evaluate(data_instance) for data_instance in data]
+                    )
+                ind_fitness = fitness_func(target_values, curr_ind_predictions)
+                self._num_new_dataset_evaluations += 1
+                ind._dataset_fitness = ind_fitness
+            else:
+                self._saved_dataset_evaluations += 1
+                ind_fitness = ind._dataset_fitness
+            
+            ind_fitnesses[ind_idx] = ind_fitness
         return ind_fitnesses
 
 class SelectionFromData(ABC):
@@ -165,11 +228,11 @@ class SelectionFromData(ABC):
         pass
 
     @staticmethod
-    def transform_highest_to_lowest(original_fitnesses:np.array) -> np.array:
+    def transform_highest_to_lowest(original_fitnesses:np.array) -> np.ndarray:
         """
         Does this: original=[0, 0.2, 0.4, 0.6, 0.8, 1], transformed=[1, 0.933, 0.8666, 0.80, 0.733, 0.6666]
         """
-        return 1 -(original_fitnesses/original_fitnesses.sum())
+        return 1 -(original_fitnesses/np.sum(original_fitnesses))
 
 class RoulleteSelection(SelectionFromData):
     @staticmethod
@@ -301,7 +364,7 @@ class LexicaseSelection(SelectionFromData):
         return mad
 
 
-    def _evaluate_individuals(self, individuals:List[Individual], target:str, run_inds_idxs:List, sample:dict) -> np.array:
+    def _evaluate_individuals(self, individuals:List[Individual], target:str, run_inds_idxs:List, sample:dict) -> np.ndarray:
         ind_fitnesses:np.array = np.zeros(len(run_inds_idxs))
         for considered_ind_idx, real_ind_idx in enumerate(run_inds_idxs):
             individual = individuals[real_ind_idx]
@@ -330,13 +393,11 @@ class MutationOP():
         if parent_node is not None:
             parent_node.substitute_child(random_node, new_node)
             ind_copy.compute_depth()
-            assert ind_copy.depth <= max_height
             return ind_copy
         else:
             #random_node is root_node
             new_ind = Individual(new_node)
             new_ind.compute_depth()
-            assert new_ind.depth <= max_height
             return new_ind
 
 class CrossoverOP():
@@ -362,8 +423,9 @@ class CrossoverOP():
             ind1_copy.compute_depth()
             ind2_copy.compute_depth()
 
-            assert ind1_copy.depth <= max_height
-            assert ind2_copy.depth <= max_height
+            ind1_copy._dataset_fitness = None
+            ind2_copy._dataset_fitness = None
+
             return ind1_copy, ind2_copy
         else:
             #crossover could not be applied

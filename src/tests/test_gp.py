@@ -178,7 +178,7 @@ class TestGrammarGP(TestCase):
         summed_squared_errors = np.sum(squared_errors)
         mean_squared_errors = summed_squared_errors / len(a)
         root_mean_squared_errors = np.sqrt(mean_squared_errors)
-        return root_mean_squared_errors
+        return root_mean_squared_errors    
 
     def test_can_do_a_pg_run(self):
         grammar = self.get_grammar()
@@ -187,32 +187,68 @@ class TestGrammarGP(TestCase):
         n_individuals = 10
         #Max depth is egual to max height of an individual 
         max_depth = 4
-        for _ in range(10):
-            grammar_gp = GrammarGP(ind_generator, grammar)
-            grammar_gp.generate_starting_pop(n_individuals, max_depth)
-            n_generations = 10
-            data = [{"X1":1, "X2":2, "X3":3, "Y":6},
-                    {"X1":2, "X2":3, "X3":4, "Y":9},
-                    {"X1":3, "X2":4, "X3":5, "Y":12}
-                    ]
-            target = "Y"
-            selection_mode = LexicaseSelection()
-            k=2
-            better_fitness='lower'
-            single_data_instance_fitness_func = lambda a, b: abs(a-b) 
-            selection_mode_args = {'k':k, 'better_fitness':better_fitness,
-                                'fitness_func':single_data_instance_fitness_func}
-            
-            whole_dataset_fitness_func = TestGrammarGP.whole_dataset_fitness
-            elitism = True
-            n_mutations=3
-            n_crossovers=3
-            p_mutation=0.3
-            p_crossover=0.5
-            best_ind, best_fitness = grammar_gp.adjust(n_generations, data, target, selection_mode, selection_mode_args, 
-                                        n_mutations, n_crossovers, whole_dataset_fitness_func,
-                                        elitism, p_mutation, p_crossover, max_depth=max_depth)
-            self.assertTrue(best_ind.height <= max_depth)
+        grammar_gp = GrammarGP(ind_generator, grammar)
+        grammar_gp.generate_starting_pop(n_individuals, max_depth)
+        n_generations = 10
+        data = [{"X1":1, "X2":2, "X3":3, "Y":6},
+                {"X1":2, "X2":3, "X3":4, "Y":9},
+                {"X1":3, "X2":4, "X3":5, "Y":12}
+                ]
+        target = "Y"
+        selection_mode = LexicaseSelection()
+        k=2
+        better_fitness='lower'
+        single_data_instance_fitness_func = lambda a, b: abs(a-b) 
+        selection_mode_args = {'k':k, 'better_fitness':better_fitness,
+                            'fitness_func':single_data_instance_fitness_func}
+        
+        whole_dataset_fitness_func = TestGrammarGP.whole_dataset_fitness
+        elitism = True
+        n_mutations=3
+        n_crossovers=3
+        p_mutation=0.3
+        p_crossover=0.5
+        best_ind, _ = grammar_gp.adjust(n_generations, data, target, selection_mode, selection_mode_args, 
+                                    n_mutations, n_crossovers, whole_dataset_fitness_func,
+                                    elitism, p_mutation, p_crossover, max_depth=max_depth)
+        self.assertTrue(best_ind.height <= max_depth)
+
+    def test_can_save_statistics_in_pg_run(self):
+        grammar = self.get_grammar()
+        ind_generator = GrowTreeGenerator(grammar)
+        
+        n_individuals = 10
+        #Max depth is egual to max height of an individual 
+        max_depth = 4
+        grammar_gp = GrammarGP(ind_generator, grammar)
+        grammar_gp.generate_starting_pop(n_individuals, max_depth)
+        n_generations = 10
+        data = [{"X1":1, "X2":2, "X3":3, "Y":6},
+                {"X1":2, "X2":3, "X3":4, "Y":9},
+                {"X1":3, "X2":4, "X3":5, "Y":12}
+                ]
+        target = "Y"
+        selection_mode = LexicaseSelection()
+        k=2
+        better_fitness='lower'
+        single_data_instance_fitness_func = lambda a, b: abs(a-b) 
+        selection_mode_args = {'k':k, 'better_fitness':better_fitness,
+                            'fitness_func':single_data_instance_fitness_func}
+        
+        whole_dataset_fitness_func = TestGrammarGP.whole_dataset_fitness
+        elitism = True
+        n_mutations=3
+        n_crossovers=3
+        p_mutation=0.3
+        p_crossover=0.5
+        _, _ = grammar_gp.adjust(n_generations, data, target, selection_mode, selection_mode_args, 
+                                    n_mutations, n_crossovers, whole_dataset_fitness_func,
+                                    elitism, p_mutation, p_crossover, max_depth=max_depth)
+        self.assertTrue(len(grammar_gp._best_fitness_by_gen) > 0)
+        self.assertTrue(len(grammar_gp._worst_fitness_by_gen) > 0)
+        self.assertTrue(len(grammar_gp._std_fitness_by_gen) > 0)
+        self.assertTrue(len(grammar_gp._mean_fitness_by_gen) > 0)
+        self.assertTrue(len(grammar_gp._num_unique_inds_by_gen) > 0)
 
 if __name__ == "__main__":
     main()

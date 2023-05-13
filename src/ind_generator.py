@@ -10,6 +10,11 @@ class TreeGenerator(ABC):
 class Individual():
     def __init__(self, root_node:Node):
         self._root = root_node
+        #whole dataset fitness cache
+        self._dataset_fitness = None
+
+    def was_evaluated_in_whole_dataset(self) -> bool:
+        return self._dataset_fitness is not None
 
     def evaluate(self, data = None):
         return self._root.evaluate(data)
