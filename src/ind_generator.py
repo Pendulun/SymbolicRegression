@@ -26,7 +26,10 @@ class Individual():
                     for child in curr_node.childs:
                         node_stack.append((child, curr_node))
     
-    def find_node_and_parent_of_type(self, node_type, max_heigth:int) -> Tuple[Node, Node]:
+    def compute_depth(self):
+        self._root.update_depth(0)
+    
+    def find_node_and_parent_of_type(self, node_type, max_height:int, other_height:int, other_depth:int) -> Tuple[Node, Node]:
         """
         Returns (None, None) if nothing was found
         """
@@ -36,7 +39,9 @@ class Individual():
         while len(node_stack) > 0:
             curr_node, node_parent = node_stack.pop()
             
-            if isinstance(curr_node, node_type) and curr_node.heigth <= max_heigth:
+            can_substitute_me = curr_node.depth + other_height <= max_height
+            can_substitute_other = other_depth + curr_node.height <= max_height
+            if isinstance(curr_node, node_type) and can_substitute_me and can_substitute_other:
                 nodes_with_parent_of_type_found.append((curr_node, node_parent))
             
             for child in curr_node.childs:
@@ -48,8 +53,12 @@ class Individual():
             return (None, None)
 
     @property
+    def height(self) -> int:
+        return self._root.height
+    
+    @property
     def depth(self) -> int:
-        return self._root.heigth
+        return self._root.depth
     
     @property
     def root(self) -> Node:
@@ -96,14 +105,14 @@ class Node():
         raise AttributeError("depth is not subscriptable")
     
     @property
-    def heigth(self)->int:
-        childs_heigths = [child.heigth for child in self._childs]
-        if len(childs_heigths) > 0:
-            heigth =  max(childs_heigths)+1
+    def height(self)->int:
+        childs_heights = [child.height for child in self._childs]
+        if len(childs_heights) > 0:
+            height =  max(childs_heights)+1
         else:
-            heigth = 0
+            height = 0
 
-        return heigth
+        return height
     
     @property
     def value(self):

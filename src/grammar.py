@@ -49,11 +49,6 @@ class Grammar():
         curr_exp = rule.at(expansions_idx.pop(0))
 
         more_than_one_exp = False
-        # if type(curr_exp.terms) in [list, tuple]:
-        #     terms = list(curr_exp.terms)
-        #     terms_was_list = True
-        # else:
-        #     terms = [curr_exp.terms]
         terms = curr_exp.terms
         if len(terms) > 1:
             more_than_one_exp = True
@@ -309,9 +304,6 @@ class FuncTerm(NonTerminalTerm):
         
         return (self.value, self.func) == (other.value, other.func)
     
-    # def __repr__(self) -> str:
-    #     return f"FuncTerm({self.value}, {self.func})"
-    
     def __hash__(self) -> int:
         return hash((self.value, self.func))
     
@@ -456,51 +448,53 @@ class ExpansionListTreeGenerator(GrammarTreeGenerator):
         return curr_node
 
 class GrowTreeGenerator(GrammarTreeGenerator):
-    def generate(self, max_depth:int, starting_rule:Rule=None, curr_depth:int=None) -> Node:
+    def generate(self, max_height:int, starting_rule:Rule=None, curr_depth:int=None, parent_rule=None) -> Node:
         if starting_rule == None:
             starting_rule = self.grammar.starting_rule
 
         if curr_depth == None:
             curr_depth = 0
         
-        root_node = self._generator_helper(starting_rule, max_depth, curr_depth = curr_depth)
+        if parent_rule == None:
+            parent_rule = self.grammar.starting_rule
+
+        root_node = self._generator_helper(starting_rule, max_height, parent_rule, curr_depth = curr_depth)
+        assert root_node.depth <= max_height
         return root_node
     
-    def _generator_helper(self, rule:Rule, max_depth:int, curr_depth:int) -> Node:
-        if self.is_last_depth(max_depth, curr_depth):
-            if self.grammar.is_terminal_rule(rule.name):
-                curr_rule = rule
+    def _generator_helper(self, my_rule:Rule, max_height:int, parent_rule:Rule, curr_depth:int) -> Node:
+        if self.is_last_depth(max_height, curr_depth):
+            if self.grammar.is_terminal_rule(my_rule.name):
+                curr_rule = my_rule
             else:
                 curr_rule = self.grammar.random_terminal_rule()
                 
             curr_exp = curr_rule.random_expansion()
-            return curr_exp.to_node(curr_rule.name, curr_depth)
+            return curr_exp.to_node(parent_rule.name, curr_depth)
         
-        curr_exp = rule.random_expansion()
+        curr_exp = my_rule.random_expansion()
         terms = list(curr_exp.terms)
         
         if len(terms) == 1:
-            # print("Only onde value. It must be a rule! (?)") #NO
             if self.grammar.is_rule(curr_exp.terms[0].value):
-                node = self._generator_helper(self.grammar.rule(curr_exp.terms[0].value), max_depth, curr_depth+1)
+                node = self._generate_node_from_rule(my_rule, max_height, curr_depth, terms[0].value)
                 return node
             else:
-                node = curr_exp.to_node(rule.name, curr_depth)
+                node = curr_exp.to_node(parent_rule.name, curr_depth)
                 return node 
         elif len(terms) == 2:
-            curr_node = self._generator_helper(self.grammar.rule(terms[0].value), max_depth, curr_depth+1)
-            if self.curr_node_is_not_terminal(max_depth, curr_depth):
+            curr_node = self._generate_node_from_rule(my_rule, max_height, curr_depth, terms[0].value)
+            if self.curr_node_is_not_terminal(max_height, curr_depth):
                 #At this point, curr_node is not a func, but a terminal, as in the next recursion it will be in the last depth
-                child_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth, curr_depth+1)
+                child_node = self._generate_node_from_rule(my_rule, max_height, curr_depth+1, terms[1].value)
                 curr_node.add_child(child_node)
             return curr_node
         elif len(terms) == 3:
-            left_child = self._generator_helper(self.grammar.rule(terms[0].value), max_depth, curr_depth+1)
-            curr_node = self._generator_helper(self.grammar.rule(terms[1].value), max_depth, curr_depth+1)
-            right_child = self._generator_helper(self.grammar.rule(terms[2].value), max_depth, curr_depth+1)
+            left_child = self._generate_node_from_rule(my_rule, max_height, curr_depth+1, terms[0].value)
+            curr_node = self._generate_node_from_rule(my_rule, max_height, curr_depth, terms[1].value)
+            right_child = self._generate_node_from_rule(my_rule, max_height, curr_depth+1, terms[2].value)
 
-            if self.curr_node_is_not_terminal(max_depth, curr_depth):
-                #At this point, curr_node is not a func, but a terminal, as in the next recursion it will be in the last depth
+            if self.curr_node_is_not_terminal(max_height, curr_depth):
                 curr_node.add_child(left_child)
                 curr_node.add_child(right_child)
 
@@ -508,14 +502,13 @@ class GrowTreeGenerator(GrammarTreeGenerator):
         else:
             raise ValueError("Terms size is bigger than 3!")
 
-    def curr_node_is_not_terminal(self, max_depth, curr_depth):
-        return not self.is_last_depth(max_depth, curr_depth+1)
-
-    def is_last_depth(self, max_depth, curr_depth):
-        return max_depth - curr_depth == 0
-
-    def new_node_from_random_expansion_of_rule(self, rule_name:str, curr_depth:int, parent_rule_name:str):
+    def _generate_node_from_rule(self, parent_rule, max_height, curr_depth, rule_name):
         curr_rule = self.grammar.rule(rule_name)
-        curr_exp = curr_rule.random_expansion()
-        curr_node = curr_exp.to_node(parent_rule_name, curr_depth)
-        return curr_node
+        node = self._generator_helper(curr_rule, max_height, parent_rule, curr_depth)
+        return node
+
+    def curr_node_is_not_terminal(self, max_depth, curr_depth):
+        return not self.is_last_depth(max_depth, curr_depth)
+
+    def is_last_depth(self, max_height, curr_depth):
+        return max_height == curr_depth

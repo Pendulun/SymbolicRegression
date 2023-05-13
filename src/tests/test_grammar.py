@@ -120,7 +120,7 @@ class TestIndividualGenerator(TestCase):
         grow_ind_generator = GrowTreeGenerator(self.grammar)
         max_depth = 4
         individual = Individual(grow_ind_generator.generate(max_depth))
-        self.assertLessEqual(individual.depth, max_depth)
+        self.assertLessEqual(individual.height, max_depth)
 
 class TestIndividual(TestCase):
     def test_can_evaluate_const_node(self):

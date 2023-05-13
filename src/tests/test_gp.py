@@ -5,6 +5,7 @@ from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, Tourna
 from genetic_prog import CrossoverOP, MutationOP
 import math
 import numpy as np
+from typing import Callable 
 
 class TestGrammarGP(TestCase):
 
@@ -41,7 +42,7 @@ class TestGrammarGP(TestCase):
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
-        grammar_gp.generate_pop(n_individuals, max_depth)
+        grammar_gp.generate_starting_pop(n_individuals, max_depth)
         self.assertEqual(grammar_gp.n_ind, n_individuals)
     
     def test_roullete_selection(self):
@@ -51,7 +52,7 @@ class TestGrammarGP(TestCase):
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
-        grammar_gp.generate_pop(n_individuals, max_depth)
+        grammar_gp.generate_starting_pop(n_individuals, max_depth)
         data=[{'X1':3, 'X2':4, 'X3':2, 'Y':9}]
         selected_ind = roullete_selection.select(individuals=grammar_gp.individuals,
                                                  data=data, 
@@ -80,7 +81,7 @@ class TestGrammarGP(TestCase):
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
-        grammar_gp.generate_pop(n_individuals, max_depth)
+        grammar_gp.generate_starting_pop(n_individuals, max_depth)
         data=[{'X1':3, 'X2':4, 'X3':2, 'Y':9}]
         selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
                                                  data=data, 
@@ -128,7 +129,7 @@ class TestGrammarGP(TestCase):
         n_individuals = 10
         max_depth = 4
         grammar_gp = GrammarGP(ind_generator, grammar)
-        grammar_gp.generate_pop(n_individuals, max_depth)
+        grammar_gp.generate_starting_pop(n_individuals, max_depth)
         data=[{'X1':3, 'X2':4, 'X3':2, 'Y':9}]
         selected_ind = selection_mode.select(individuals=grammar_gp.individuals,
                                                  data=data, 
@@ -149,26 +150,69 @@ class TestGrammarGP(TestCase):
         grammar_gp = GrammarGP(ind_generator, grammar)
         n_individuals = 1
         max_depth = 4
-        grammar_gp.generate_pop(n_individuals, max_depth)
+        grammar_gp.generate_starting_pop(n_individuals, max_depth)
         original_ind = grammar_gp.individuals[0]
         new_ind = MutationOP.mutate(original_ind, grammar, max_depth, ind_generator)
-        self.assertTrue(new_ind.depth <= max_depth)
+        self.assertTrue(new_ind.height <= max_depth)
 
     def test_crossover_operator(self):
         grammar = self.get_grammar()
         ind_generator = GrowTreeGenerator(grammar)
         grammar_gp = GrammarGP(ind_generator, grammar)
-        n_individuals = 2
-        max_depth = 4
-        grammar_gp.generate_pop(n_individuals, max_depth)
+        n_individuals = 10
+        max_height = 4
+        grammar_gp.generate_starting_pop(n_individuals, max_height)
         ind1 = grammar_gp.individuals[0]
         ind2 = grammar_gp.individuals[1]
-        new_ind1, new_ind2 = CrossoverOP.cross(ind1, ind2, max_depth)
+        new_ind1, new_ind2 = CrossoverOP.cross(ind1, ind2, max_height)
         if new_ind1 is not None:
-            self.assertTrue(new_ind1.depth <= max_depth)
+            self.assertTrue(new_ind1.height <= max_height)
 
         if new_ind2 is not None:
-            self.assertTrue(new_ind2.depth <= max_depth)
+            self.assertTrue(new_ind2.height <= max_height)
+    
+    @staticmethod
+    def whole_dataset_fitness(a:np.array, b:np.array) -> float:
+        simple_errors = a-b
+        squared_errors = np.square(simple_errors)
+        summed_squared_errors = np.sum(squared_errors)
+        mean_squared_errors = summed_squared_errors / len(a)
+        root_mean_squared_errors = np.sqrt(mean_squared_errors)
+        return root_mean_squared_errors
+
+    def test_can_do_a_pg_run(self):
+        grammar = self.get_grammar()
+        ind_generator = GrowTreeGenerator(grammar)
         
+        n_individuals = 10
+        #Max depth is egual to max height of an individual 
+        max_depth = 4
+        for _ in range(10):
+            grammar_gp = GrammarGP(ind_generator, grammar)
+            grammar_gp.generate_starting_pop(n_individuals, max_depth)
+            n_generations = 10
+            data = [{"X1":1, "X2":2, "X3":3, "Y":6},
+                    {"X1":2, "X2":3, "X3":4, "Y":9},
+                    {"X1":3, "X2":4, "X3":5, "Y":12}
+                    ]
+            target = "Y"
+            selection_mode = LexicaseSelection()
+            k=2
+            better_fitness='lower'
+            single_data_instance_fitness_func = lambda a, b: abs(a-b) 
+            selection_mode_args = {'k':k, 'better_fitness':better_fitness,
+                                'fitness_func':single_data_instance_fitness_func}
+            
+            whole_dataset_fitness_func = TestGrammarGP.whole_dataset_fitness
+            elitism = True
+            n_mutations=3
+            n_crossovers=3
+            p_mutation=0.3
+            p_crossover=0.5
+            best_ind, best_fitness = grammar_gp.adjust(n_generations, data, target, selection_mode, selection_mode_args, 
+                                        n_mutations, n_crossovers, whole_dataset_fitness_func,
+                                        elitism, p_mutation, p_crossover, max_depth=max_depth)
+            self.assertTrue(best_ind.height <= max_depth)
+
 if __name__ == "__main__":
     main()
