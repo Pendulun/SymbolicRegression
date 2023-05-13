@@ -1,5 +1,5 @@
 from unittest import TestCase, main
-from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExp, UnFuncExp, StrExp, VarExpr, Term, FuncTerm
+from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExp, UnFuncExp, StrExp, VarExp, Term, FuncTerm
 from grammar import GrowTreeGenerator
 from genetic_prog import GrammarGP, SelectionFromData, RoulleteSelection, TournamentSelection, LexicaseSelection
 from genetic_prog import CrossoverOP, MutationOP
@@ -22,7 +22,7 @@ class TestGrammarGP(TestCase):
         ]
 
         terminal_rules = [
-            Rule('var', [VarExpr(Term('X1')), VarExpr(Term('X2')), VarExpr(Term('X3'))]),
+            Rule('var', [VarExp(Term('X1')), VarExp(Term('X2')), VarExp(Term('X3'))]),
             Rule('const', [NumericExp(Term(1)), NumericExp(Term(2)),
                            NumericExp(Term(3)), NumericExp(Term(4))])
         ]

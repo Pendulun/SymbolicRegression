@@ -1,5 +1,5 @@
 from unittest import main, TestCase
-from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExp, UnFuncExp, StrExp, VarExpr, Term, FuncTerm
+from grammar import Grammar, Rule, Expansion, NumericExp, BinFuncExp, UnFuncExp, StrExp, VarExp, Term, FuncTerm
 from grammar import ExpansionListTreeGenerator, GrowTreeGenerator
 from grammar import ConstNode, VarNode, UnOPNode, BinOPNode, Individual
 import math
@@ -20,7 +20,7 @@ class TestGrammar(TestCase):
         ]
 
         terminal_rules = [
-            Rule('var', [VarExpr(Term('X1')), VarExpr(Term('X2')), VarExpr(Term('X3'))]),
+            Rule('var', [VarExp(Term('X1')), VarExp(Term('X2')), VarExp(Term('X3'))]),
             Rule('const', [NumericExp(Term(1)), NumericExp(Term(2)),
                            NumericExp(Term(3)), NumericExp(Term(4))])
         ]
@@ -94,7 +94,7 @@ class TestIndividualGenerator(TestCase):
         ]
 
         terminal_rules = [
-            Rule('var', [VarExpr(Term('X1')), VarExpr(Term('X2')), VarExpr(Term('X3'))]),
+            Rule('var', [VarExp(Term('X1')), VarExp(Term('X2')), VarExp(Term('X3'))]),
             Rule('const', [NumericExp(Term(1)), NumericExp(Term(2)), 
                            NumericExp(Term(3)), NumericExp(Term(4))])
         ]

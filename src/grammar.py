@@ -199,7 +199,7 @@ class StrExp(Expansion):
     def __str__(self):
         return str(self._expansion_terms[0].value)
 
-class VarExpr(StrExp):
+class VarExp(StrExp):
     def __init__(self, term: Term):
         super().__init__(term)
 
