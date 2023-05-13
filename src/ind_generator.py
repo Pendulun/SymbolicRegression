@@ -93,8 +93,13 @@ class Node():
         raise NotImplementedError(f"evaluate not implemented for {self.__class__.__name__} class!")
 
     def substitute_child(self, old_node:Node, new_node:Node):
-        old_node_index = self._childs.index(old_node)
-        self._childs[old_node_index] = new_node
+        for child_idx, child in enumerate(self._childs):
+            if child is old_node:
+                self._childs[child_idx] = new_node
+                return
+        
+        raise ValueError("Didnt find the child node!")
+        
 
     def update_depth(self, new_depth:int):
         self._depth = new_depth
