@@ -88,11 +88,6 @@ def configure_parser() -> argparse.ArgumentParser:
                         type=float,
                         default=0.3,
                         help="The mutation probability. Default=0.3")
-    parser.add_argument("--random_seed",
-                        type=int,
-                        required=False,
-                        default=random.randint(1, 1000),
-                        help="The random seed to use. There is no default.")
     parser.add_argument("--num_runs",
                         type=int,
                         default=30,
@@ -218,12 +213,10 @@ if __name__ == "__main__":
     parser = configure_parser()
     args = parser.parse_args()
 
-    random.seed(args.random_seed)
-    print(f"Random seed used: {args.random_seed}")
-
     train_data, test_data, num_features = read_data(args)
     
     num_runs = args.num_runs
+    random_seeds = [random.randint(0, 1000) for _ in range(num_runs)]
 
     selector = get_selector(args)
     single_data_instance_fitness_func = lambda a, b: abs(a-b) 
@@ -246,6 +239,7 @@ if __name__ == "__main__":
     run_results_folder.mkdir(parents=True, exist_ok=False)
 
     for run_id in tqdm(range(num_runs)):
+        random.seed(random_seeds[run_id])
         grammar = configure_grammar(num_features)
         grammar_gp = GrammarGP(GrowTreeGenerator(grammar), grammar)
         grammar_gp.generate_starting_pop(args.num_inds, args.max_height)
@@ -273,7 +267,8 @@ if __name__ == "__main__":
                                                   fitness_func = whole_dataset_fitness_func,
                                                   individual = best_ind)
         
-        fitness_stats = {'train_fit':train_fitness, 'test_fit':test_fitness, 'train_time_seconds':total_time}
+        fitness_stats = {'train_fit':train_fitness, 'test_fit':test_fitness, 
+                         'train_time_seconds':total_time, 'random_seed':random_seeds[run_id]}
         fitness_stats_list.append(fitness_stats)
 
     fitness_df = pd.DataFrame(fitness_stats_list)
