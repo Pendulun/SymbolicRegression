@@ -16,7 +16,7 @@ class Individual():
     def was_evaluated_in_whole_dataset(self) -> bool:
         return self._dataset_fitness is not None
 
-    def evaluate(self, data = None):
+    def evaluate(self, data:dict = None):
         return self._root.evaluate(data)
     
     def random_node_and_parent(self) -> Tuple[Node, Node]:

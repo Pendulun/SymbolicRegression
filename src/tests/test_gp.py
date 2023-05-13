@@ -210,7 +210,7 @@ class TestGrammarGP(TestCase):
         p_crossover=0.5
         best_ind, _ = grammar_gp.adjust(n_generations, data, target, selection_mode, selection_mode_args, 
                                     n_mutations, n_crossovers, whole_dataset_fitness_func,
-                                    elitism, p_mutation, p_crossover, max_depth=max_depth)
+                                    elitism, p_mutation, p_crossover, max_height=max_depth)
         self.assertTrue(best_ind.height <= max_depth)
 
     def test_can_save_statistics_in_pg_run(self):
@@ -243,7 +243,7 @@ class TestGrammarGP(TestCase):
         p_crossover=0.5
         _, _ = grammar_gp.adjust(n_generations, data, target, selection_mode, selection_mode_args, 
                                     n_mutations, n_crossovers, whole_dataset_fitness_func,
-                                    elitism, p_mutation, p_crossover, max_depth=max_depth)
+                                    elitism, p_mutation, p_crossover, max_height=max_depth)
         self.assertTrue(len(grammar_gp._best_fitness_by_gen) > 0)
         self.assertTrue(len(grammar_gp._worst_fitness_by_gen) > 0)
         self.assertTrue(len(grammar_gp._std_fitness_by_gen) > 0)

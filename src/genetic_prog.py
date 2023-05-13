@@ -55,7 +55,7 @@ class GrammarGP(GP):
     def adjust(self, n_generations:int, data:List[dict], target:str, 
                selector:SelectionFromData, selector_args:dict, n_mutations:int, 
                n_crossovers:int, dataset_fitness_func:Callable, elitism:bool=True,
-               p_mutation:float=0.5, p_crossover:float=0.5, max_depth:int=5) -> Tuple[Individual, float]:
+               p_mutation:float=0.5, p_crossover:float=0.5, max_height:int=5) -> Tuple[Individual, float]:
         """
         This does a symbolic regression. Returns the best individual.
         n_generations: (int) The number of generations to run.
@@ -82,10 +82,10 @@ class GrammarGP(GP):
 
             next_gen_pop:List[Individual] = list()
 
-            new_mutated_inds = self.mutate(n_mutations, p_mutation, max_depth, selected_inds)
+            new_mutated_inds = self.mutate(n_mutations, p_mutation, max_height, selected_inds)
             next_gen_pop.extend(new_mutated_inds)
 
-            new_crossed_inds = self.cross(n_crossovers, p_crossover, max_depth, selected_inds, 
+            new_crossed_inds = self.cross(n_crossovers, p_crossover, max_height, selected_inds, 
                                           data, target, dataset_fitness_func, better_fitness)
             next_gen_pop.extend(new_crossed_inds)
 
@@ -362,7 +362,6 @@ class LexicaseSelection(SelectionFromData):
         error_median = statistics.median(ind_fitnesses)
         mad = statistics.median(np.abs(ind_fitnesses - error_median))
         return mad
-
 
     def _evaluate_individuals(self, individuals:List[Individual], target:str, run_inds_idxs:List, sample:dict) -> np.ndarray:
         ind_fitnesses:np.array = np.zeros(len(run_inds_idxs))
