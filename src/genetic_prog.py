@@ -213,7 +213,8 @@ class SelectionFromData(ABC):
     @staticmethod
     @abstractmethod
     def select(individuals:List[Individual], data:List[dict], 
-               target:Union[str,int,float], fitness_func:Callable, k:int=1, n:int=1, better_fitness:str='greater') -> List[Individual]:
+               target:Union[str,int,float], fitness_func:Callable, k:int=1, n:int=1, 
+               better_fitness:str='greater', *args) -> List[Individual]:
         """
         This returns n individuals.
         individuals: individuals list
@@ -238,7 +239,8 @@ class SelectionFromData(ABC):
 class RoulleteSelection(SelectionFromData):
     @staticmethod
     def select(individuals:List[Individual], data:List[dict], 
-               target:Union[str, int, float], fitness_func: Callable, k:int=1, n:int=1, better_fitness:str='greater') -> List[Individual]:
+               target:Union[str, int, float], fitness_func: Callable, k:int=1, 
+               n:int=1, better_fitness:str='greater', *args) -> List[Individual]:
         """
         This returns n individuals.
         individuals: individuals list
@@ -265,7 +267,7 @@ class TournamentSelection(SelectionFromData):
     @staticmethod
     def select(individuals: List[Individual], data: List[dict], 
                target: Union[str, int, float], fitness_func: Callable[..., Any], 
-               k: int = 1, n: int = 1, better_fitness:str='greater') -> List[Individual]:
+               k: int = 1, n: int = 1, better_fitness:str='greater', *args) -> List[Individual]:
         """
         This returns n individuals.
         individuals: individuals list
@@ -277,25 +279,19 @@ class TournamentSelection(SelectionFromData):
         n: The number of selections to do.
         better_fitness: The logic for the better fitness. Must be one of ['greater','lower']. That is,
             if 'greater' then greater fitness equal better fitness and the equivalent for 'lower'
-        """
-
-        n_inds = len(individuals)
-        ind_fitness = np.empty(n_inds)
-        for data_instance in data:
-            curr_fitness = np.asarray([fitness_func(ind.evaluate(data_instance), data_instance[target])
-                             for ind in individuals])
-            ind_fitness = ind_fitness+curr_fitness
-
-        if better_fitness == 'lower':
-            ind_fitness = RoulleteSelection.transform_highest_to_lowest(ind_fitness)
-        
+        """       
         selected = list()
-        ind_idxs = range(n_inds)
+        ind_idxs = range(len(individuals))
         for _ in range(n):
-            selected_idxs = random.choices(population=ind_idxs, weights=ind_fitness, k=k)
-            selected_fitnesses = ind_fitness[selected_idxs]
-            max_fitness_idx = np.argmax(selected_fitnesses)
-            max_fitness_ind_idx = selected_idxs[max_fitness_idx]
+            selected_idxs_of_inds = random.choices(population=ind_idxs, k=k)
+
+            inds_on_tournament = [individuals[idx] for idx in selected_idxs_of_inds]
+            ind_fitnesses = EvaluationUtils.eval_inds_on_dataset(data, target, fitness_func, inds_on_tournament)
+
+            if better_fitness == 'lower':
+                ind_fitnesses = SelectionFromData.transform_highest_to_lowest(ind_fitnesses)
+
+            max_fitness_ind_idx = selected_idxs_of_inds[np.argmax(ind_fitnesses)]
             selected.append(copy.deepcopy(individuals[max_fitness_ind_idx]))
         
         return selected
@@ -304,7 +300,7 @@ class LexicaseSelection(SelectionFromData):
     @staticmethod
     def select(individuals: List[Individual], data: List[dict], 
                target: Union[str, int, float], fitness_func: Callable[..., Any], 
-               k: int = 1, n: int = 1, better_fitness:str='greater') -> List[Individual]:
+               k: int = 1, n: int = 1, better_fitness:str='greater', *args) -> List[Individual]:
         """
         This returns n individuals.
         individuals: individuals list
@@ -343,26 +339,26 @@ class LexicaseSelection(SelectionFromData):
 
         return selected_individuals
 
-    def select_good_enough_inds_idxs(self, run_inds_idxs:list, ind_fitnesses:np.array) -> list:
-        mad = self.calculate_mad(ind_fitnesses)
+    def select_good_enough_inds_idxs(run_inds_idxs:list, ind_fitnesses:np.array) -> list:
+        mad = LexicaseSelection.calculate_mad(ind_fitnesses)
         next_run_ind_idxs = list()
         best_fitness = ind_fitnesses.min()
 
         next_run_ind_idxs = [run_inds_idxs[ind_idx]
                                         for ind_idx, ind_fitness in enumerate(ind_fitnesses)
-                                        if self.good_enough(ind_fitness, best_fitness, mad)]
+                                        if LexicaseSelection.good_enough(ind_fitness, best_fitness, mad)]
         run_inds_idxs = next_run_ind_idxs
         return run_inds_idxs
 
-    def good_enough(self, ind_fitness, best_fitness, mad) -> bool:
+    def good_enough(ind_fitness, best_fitness, mad) -> bool:
         return ind_fitness <= best_fitness + mad
 
-    def calculate_mad(self, ind_fitnesses:np.array):
+    def calculate_mad(ind_fitnesses:np.array):
         error_median = statistics.median(ind_fitnesses)
         mad = statistics.median(np.abs(ind_fitnesses - error_median))
         return mad
 
-    def _evaluate_individuals(self, individuals:List[Individual], target:str, run_inds_idxs:List, sample:dict) -> np.ndarray:
+    def _evaluate_individuals(individuals:List[Individual], target:str, run_inds_idxs:List, sample:dict) -> np.ndarray:
         ind_fitnesses:np.array = np.zeros(len(run_inds_idxs))
         for considered_ind_idx, real_ind_idx in enumerate(run_inds_idxs):
             individual = individuals[real_ind_idx]

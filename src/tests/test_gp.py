@@ -97,33 +97,30 @@ class TestGrammarGP(TestCase):
         self.assertTrue(any([str(ind) == str(selected_ind) for ind in grammar_gp.individuals]))
     
     def test_can_calculate_mad(self):
-        lexicase_sel = LexicaseSelection()
         ordered_ind_fitnesses = np.array([1, 2, 3, 4, 5, 6, 7])
         median_fit = ordered_ind_fitnesses[len(ordered_ind_fitnesses)//2]
         diff = [val - median_fit for val in ordered_ind_fitnesses]
         abs_diff = [abs(val) for val in diff]
         abs_diff.sort()
         abs_diff_median = abs_diff[len(abs_diff)//2]
-        self.assertEqual(lexicase_sel.calculate_mad(ordered_ind_fitnesses), abs_diff_median)
+        self.assertEqual(LexicaseSelection.calculate_mad(ordered_ind_fitnesses), abs_diff_median)
     
     def test_lexicase_sel_is_good_enough(self):
-        lexicase_sel = LexicaseSelection()
         ind_fitness = 4.5
         best_fitness = 4
         mad = 1
-        self.assertTrue(lexicase_sel.good_enough(ind_fitness, best_fitness, mad))
+        self.assertTrue(LexicaseSelection.good_enough(ind_fitness, best_fitness, mad))
     
     def test_lexicase_sel_is_not_good_enough(self):
-        lexicase_sel = LexicaseSelection()
         ind_fitness = 5
         best_fitness = 4
         mad = 1
-        self.assertTrue(lexicase_sel.good_enough(ind_fitness, best_fitness, mad))
+        self.assertTrue(LexicaseSelection.good_enough(ind_fitness, best_fitness, mad))
         mad=0.5
-        self.assertFalse(lexicase_sel.good_enough(ind_fitness, best_fitness, mad))
+        self.assertFalse(LexicaseSelection.good_enough(ind_fitness, best_fitness, mad))
     
     def test_lexicase_selection(self):
-        selection_mode = LexicaseSelection()
+        selection_mode = LexicaseSelection
         grammar = self.get_grammar()
         ind_generator = GrowTreeGenerator(grammar)
         n_individuals = 10
