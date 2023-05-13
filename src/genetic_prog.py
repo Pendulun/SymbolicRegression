@@ -77,8 +77,12 @@ class GrammarGP(GP):
 
         for _ in range(n_generations):
 
-            selected_inds = selector.select(self._individuals, data, target, single_data_fitness_func, 
-                                                  k=k, n=n_inds_for_selection_and_ops, better_fitness=better_fitness)            
+            selected_inds = selector.select(individuals = self._individuals,
+                                            data = data,
+                                            target = target, 
+                                            fitness_func = single_data_fitness_func, 
+                                            k=k, n=n_inds_for_selection_and_ops, 
+                                            better_fitness=better_fitness)            
 
             next_gen_pop:List[Individual] = list()
 
@@ -265,7 +269,8 @@ class RoulleteSelection(SelectionFromData):
         return selected_inds
 
 class TournamentSelection(SelectionFromData):
-    def select(self, individuals: List[Individual], data: List[dict], 
+    @staticmethod
+    def select(individuals: List[Individual], data: List[dict], 
                target: Union[str, int, float], fitness_func: Callable[..., Any], 
                k: int = 1, n: int = 1, better_fitness:str='greater') -> List[Individual]:
         """
@@ -303,7 +308,8 @@ class TournamentSelection(SelectionFromData):
         return selected
 
 class LexicaseSelection(SelectionFromData):
-    def select(self, individuals: List[Individual], data: List[dict], 
+    @staticmethod
+    def select(individuals: List[Individual], data: List[dict], 
                target: Union[str, int, float], fitness_func: Callable[..., Any], 
                k: int = 1, n: int = 1, better_fitness:str='greater') -> List[Individual]:
         """
@@ -325,9 +331,9 @@ class LexicaseSelection(SelectionFromData):
             good_ind_idxs = range(len(individuals))
             
             for sample in data_samples:
-                ind_fitnesses:np.array = self._evaluate_individuals(individuals, target, good_ind_idxs, sample)
+                ind_fitnesses:np.array = LexicaseSelection._evaluate_individuals(individuals, target, good_ind_idxs, sample)
 
-                selected_good_ind_idxs = self.select_good_enough_inds_idxs(good_ind_idxs, ind_fitnesses)
+                selected_good_ind_idxs = LexicaseSelection.select_good_enough_inds_idxs(good_ind_idxs, ind_fitnesses)
 
                 if len(selected_good_ind_idxs) == 0:
                     good_ind_idxs = random.choice(good_ind_idxs)
