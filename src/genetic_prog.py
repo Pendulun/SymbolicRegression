@@ -8,6 +8,25 @@ import numpy as np
 import random
 from typing import Callable, Any, List, Union, Tuple
 
+class EvaluationUtils:
+    def eval_inds_on_dataset(data, target, fitness_func, individuals:list[Individual]):
+        ind_fitnesses = np.empty(len(individuals))
+        target_values = np.array([data_instance[target] for data_instance in data])
+
+        for ind_idx, ind in enumerate(individuals):
+
+            if not ind.was_evaluated_in_whole_dataset():
+                curr_ind_predictions = np.array(
+                    [ind.evaluate(data_instance) for data_instance in data]
+                    )
+                ind_fitness = fitness_func(target_values, curr_ind_predictions)
+                ind._dataset_fitness = ind_fitness
+            else:
+                ind_fitness = ind._dataset_fitness
+            
+            ind_fitnesses[ind_idx] = ind_fitness
+        return ind_fitnesses
+
 
 class GP(ABC):
     def __init__(self, grammar_tree_generator:TreeGenerator) -> None:
@@ -44,8 +63,6 @@ class GrammarGP(GP):
         self._num_unique_inds_by_gen = list()
         self._num_ind_better_than_parents_after_cross_by_gen = list()
         self._num_ind_worst_than_parents_after_cross_by_gen = list()
-        self._saved_dataset_evaluations = 0
-        self._num_new_dataset_evaluations = 0
     
     def generate_starting_pop(self, n_individuals:int, max_height:int):
         for _ in range(n_individuals):
@@ -147,9 +164,9 @@ class GrammarGP(GP):
                     new_crossed_inds.append(new_ind1)
                     new_crossed_inds.append(new_ind2)
 
-                    parents_fits = self._evaluate_individuals(data, target, dataset_fitness_func, [random_ind1, random_ind2])
+                    parents_fits = EvaluationUtils.eval_inds_on_dataset(data, target, dataset_fitness_func, [random_ind1, random_ind2])
                     parents_mean_fit = np.mean(parents_fits)
-                    new_inds_fits = self._evaluate_individuals(data, target, dataset_fitness_func, [new_ind1, new_ind2])
+                    new_inds_fits = EvaluationUtils.eval_inds_on_dataset(data, target, dataset_fitness_func, [new_ind1, new_ind2])
 
                     for new_ind_fit in new_inds_fits:
                         if better_fitness == 'lower':
@@ -188,27 +205,7 @@ class GrammarGP(GP):
 
     def _evaluate_gen_individuals(self, data:List[dict], target:str, fitness_func:Callable) -> np.ndarray:
         individuals = self._individuals
-        ind_fitnesses = self._evaluate_individuals(data, target, fitness_func, individuals)
-        return ind_fitnesses
-
-    def _evaluate_individuals(self, data, target, fitness_func, individuals:list[Individual]):
-        ind_fitnesses = np.empty(len(individuals))
-        target_values = np.array([data_instance[target] for data_instance in data])
-
-        for ind_idx, ind in enumerate(individuals):
-
-            if not ind.was_evaluated_in_whole_dataset():
-                curr_ind_predictions = np.array(
-                    [ind.evaluate(data_instance) for data_instance in data]
-                    )
-                ind_fitness = fitness_func(target_values, curr_ind_predictions)
-                self._num_new_dataset_evaluations += 1
-                ind._dataset_fitness = ind_fitness
-            else:
-                self._saved_dataset_evaluations += 1
-                ind_fitness = ind._dataset_fitness
-            
-            ind_fitnesses[ind_idx] = ind_fitness
+        ind_fitnesses = EvaluationUtils.eval_inds_on_dataset(data, target, fitness_func, individuals)
         return ind_fitnesses
 
 class SelectionFromData(ABC):
@@ -254,16 +251,12 @@ class RoulleteSelection(SelectionFromData):
         better_fitness: The logic for the better fitness. Must be one of ['greater','lower']. That is,
             if 'greater' then greater fitness equal better fitness and the equivalent for 'lower'.
         """
-        ind_fitness = np.empty(len(individuals))
-        for data_instance in data:
-            curr_fitness = np.asarray([fitness_func(ind.evaluate(data_instance), data_instance[target])
-                             for ind in individuals])
-            ind_fitness = ind_fitness+curr_fitness
+        ind_fitnesses = EvaluationUtils.eval_inds_on_dataset(data, target, fitness_func, individuals)
         
         if better_fitness == 'lower':
-            ind_fitness = RoulleteSelection.transform_highest_to_lowest(ind_fitness)
+            ind_fitnesses = RoulleteSelection.transform_highest_to_lowest(ind_fitnesses)
         
-        selected_inds = random.choices(population=individuals, weights=ind_fitness, k=n)
+        selected_inds = random.choices(population=individuals, weights=ind_fitnesses, k=n)
         selected_inds = [copy.deepcopy(ind) for ind in selected_inds]
 
         return selected_inds

@@ -188,15 +188,6 @@ def save_run_stats(results_folder, run_results_folder, run_id, grammar_gp:Gramma
     stats_by_run_df = pd.DataFrame(single_run_stats)
     stats_by_run_df.to_csv(results_folder / run_results_folder / f"stats_by_run_{run_id}.csv", index=False)
 
-def get_selector(args):
-    if args.selection_type == 'Tournament':
-        selector = TournamentSelection
-    elif args.selection_type == 'Roullete':
-        selector = RoulleteSelection
-    elif args.selection_type == 'Lexicase':
-        selector = LexicaseSelection
-    return selector
-
 def read_data(args):
     train_data_df = pd.read_csv(args.train_data_path)
     test_data_df = pd.read_csv(args.test_data_path)
@@ -218,11 +209,19 @@ if __name__ == "__main__":
     num_runs = args.num_runs
     random_seeds = [random.randint(0, 1000) for _ in range(num_runs)]
 
-    selector = get_selector(args)
-    single_data_instance_fitness_func = lambda a, b: abs(a-b) 
+    if args.selection_type == 'Tournament':
+        selector = TournamentSelection
+        selection_fitness_func = whole_dataset_fitness
+    elif args.selection_type == 'Roullete':
+        selector = RoulleteSelection
+        selection_fitness_func = whole_dataset_fitness
+    elif args.selection_type == 'Lexicase':
+        selector = LexicaseSelection
+        selection_fitness_func = lambda a, b: abs(a-b) 
+    
     selection_mode_args = {'k':args.selection_k,
                         'better_fitness':args.better_fitness,
-                        'fitness_func':single_data_instance_fitness_func}
+                        'fitness_func':selection_fitness_func}
     
     whole_dataset_fitness_func = whole_dataset_fitness
     
