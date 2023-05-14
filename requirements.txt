@@ -2,3 +2,7 @@ coverage
 pandas
 numpy
 tqdm
+jupyterlab
+ipykernel
+matplotlib
+scipy
