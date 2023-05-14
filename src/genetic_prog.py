@@ -314,12 +314,12 @@ class LexicaseSelection(SelectionFromData):
             if 'greater' then greater fitness equal better fitness and the equivalent for 'lower'. Ignored for this selection type.
         """
         selected_individuals = list()
-
+        data_copy = copy.deepcopy(data)
         for _ in range(n):
-            data_samples = random.sample(data, k=len(data))
+            random.shuffle(data_copy)
             good_ind_idxs = range(len(individuals))
             
-            for sample in data_samples:
+            for sample in data_copy:
                 ind_fitnesses:np.array = LexicaseSelection._evaluate_individuals(individuals, target, good_ind_idxs, sample)
 
                 selected_good_ind_idxs = LexicaseSelection.select_good_enough_inds_idxs(good_ind_idxs, ind_fitnesses)
